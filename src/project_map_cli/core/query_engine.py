@@ -6,8 +6,12 @@ import networkx as nx
 
 class QueryEngine:
     def __init__(self, project_root: Optional[str] = None):
-        self.project_root = project_root or os.environ.get("PROJECT_ROOT", "/opt/project")
-        self.digest_root = Path(self.project_root) / "docs/repo_summary/latest"
+        self.project_root = project_root or os.environ.get("PROJECT_ROOT", os.getcwd())
+        
+        # Default index directory is relative to the project_root
+        default_index = os.path.join(self.project_root, ".project-map", "docs", "repo_summary", "latest")
+        index_dir = os.environ.get("PROJECT_MAP_DIR", default_index)
+        self.digest_root = Path(index_dir)
         
         self.paths_cache: Optional[Dict[str, str]] = None
         self.metadata_cache: Optional[Dict[str, Any]] = None
@@ -66,12 +70,15 @@ class QueryEngine:
                 self.metadata_cache = {"version": "1.0.0", "status": "unknown"}
         return self.metadata_cache
 
+    def _load_paths_cache(self) -> None:
+        try:
+            self.paths_cache = self.read_json_shard("paths.json")
+        except RuntimeError:
+            raise RuntimeError(f"Project map index not found at '{self.digest_root}'.\nPlease run 'project-map build' to generate it.")
+
     def resolve_pids(self, pids: List[str]) -> Dict[str, str]:
         if not self.paths_cache:
-            try:
-                self.paths_cache = self.read_json_shard("paths.json")
-            except RuntimeError:
-                self.paths_cache = {}
+            self._load_paths_cache()
 
         result = {}
         for pid in pids:
@@ -80,19 +87,28 @@ class QueryEngine:
 
     def get_pid_for_path(self, target_path: str) -> Optional[int]:
         if not self.paths_cache:
-            try:
-                self.paths_cache = self.read_json_shard("paths.json")
-            except RuntimeError:
-                self.paths_cache = {}
+            self._load_paths_cache()
+
+        try:
+            # Normalize the path relative to project_root
+            if Path(target_path).is_absolute():
+                try:
+                    rel_path = str(Path(target_path).relative_to(self.project_root))
+                except ValueError:
+                    rel_path = target_path
+            else:
+                rel_path = os.path.normpath(target_path)
+        except ValueError:
+            rel_path = target_path
 
         # Try exact match first
         for pid, path in self.paths_cache.items():
-            if path == target_path:
+            if path == target_path or path == rel_path:
                 return int(pid)
         
-        # Fallback to suffix match (e.g. src/core/main.py matches /abs/path/to/src/core/main.py)
+        # Fallback to suffix match
         for pid, path in self.paths_cache.items():
-            if path.endswith(target_path):
+            if path.endswith(target_path) or path.endswith(rel_path):
                 return int(pid)
         return None
 

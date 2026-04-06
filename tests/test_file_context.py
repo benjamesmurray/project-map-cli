@@ -6,8 +6,9 @@ from project_map_cli.core.query_engine import QueryEngine
 from project_map_cli.cli.main import cli
 
 @pytest.fixture
-def test_engine():
+def test_engine(monkeypatch):
     fixture_root = str(Path(__file__).parent / "fixtures")
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
     return QueryEngine(project_root=fixture_root)
 
 def test_get_pid_for_path(test_engine):
@@ -35,7 +36,7 @@ def test_get_shallow_dependencies(test_engine):
 
 def test_context_command(monkeypatch):
     fixture_root = str(Path(__file__).parent / "fixtures")
-    monkeypatch.setenv("PROJECT_ROOT", fixture_root)
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
     
     runner = CliRunner()
     result = runner.invoke(cli, ["context", "--path", "src/main/kotlin/com/example/UserService.kt"])
@@ -56,7 +57,7 @@ def test_context_command(monkeypatch):
 
 def test_context_command_not_found(monkeypatch):
     fixture_root = str(Path(__file__).parent / "fixtures")
-    monkeypatch.setenv("PROJECT_ROOT", fixture_root)
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
     
     runner = CliRunner()
     result = runner.invoke(cli, ["context", "--path", "non_existent.py"])
@@ -66,7 +67,7 @@ def test_context_command_not_found(monkeypatch):
 
 def test_context_command_empty_file(monkeypatch):
     fixture_root = str(Path(__file__).parent / "fixtures")
-    monkeypatch.setenv("PROJECT_ROOT", fixture_root)
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
     
     runner = CliRunner()
     result = runner.invoke(cli, ["context", "--path", "src/empty.py"])

@@ -9,6 +9,7 @@ def set_env(monkeypatch):
     # Point the CLI to use our fixtures
     fixture_root = str(Path(__file__).parent / "fixtures")
     monkeypatch.setenv("PROJECT_ROOT", fixture_root)
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
 
 def test_find_command():
     runner = CliRunner()

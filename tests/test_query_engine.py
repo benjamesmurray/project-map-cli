@@ -4,10 +4,11 @@ import pytest
 from project_map_cli.core.query_engine import QueryEngine
 
 @pytest.fixture
-def test_engine():
+def test_engine(monkeypatch):
     # Setup the PROJECT_ROOT to point to our test fixtures directory
-    project_root = str(Path(__file__).parent / "fixtures")
-    return QueryEngine(project_root=project_root)
+    fixture_root = str(Path(__file__).parent / "fixtures")
+    monkeypatch.setenv("PROJECT_MAP_DIR", fixture_root + "/docs/repo_summary/latest")
+    return QueryEngine(project_root=fixture_root)
 
 def test_resolve_pids(test_engine):
     pids = ["1", "3", "99"]

@@ -49,10 +49,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("--root", "-r", type=str, required=True,
-                        help="Path to the repository root to analyze.")
-    parser.add_argument("--out-dir", "-o", type=str, required=True,
-                        help="Directory to contain the timestamped output subfolder.")
+    parser.add_argument("--root", "-r", type=str, required=False, default=".",
+                        help="Path to the repository root to analyze (default: current directory).")
+    parser.add_argument("--out-dir", "-o", type=str, required=False, default=".project-map/docs/repo_summary/latest",
+                        help="Directory to contain the timestamped output subfolder (default: .project-map/docs/repo_summary/latest).")
     parser.add_argument("--ns-allow", type=str, required=False, default=None,
                         help=r"Regex for namespace allow-list (e.g. '^my_pkg(\.|$)'). If omitted, auto-infer from repo.")
     parser.add_argument("--ns-auto", dest="ns_auto", action=argparse.BooleanOptionalAction, default=True,
