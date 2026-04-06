@@ -1,0 +1,28 @@
+import os
+from pathlib import Path
+import pytest
+from click.testing import CliRunner
+from project_map_cli.cli.main import cli
+
+@pytest.fixture(autouse=True)
+def set_env(monkeypatch):
+    # Point the CLI to use our fixtures
+    fixture_root = str(Path(__file__).parent / "fixtures")
+    monkeypatch.setenv("WDE_ROOT", fixture_root)
+
+def test_find_command():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["find", "--query", "UserService"])
+    assert result.exit_code == 0
+    assert "Resource: Symbols | Query: UserService" in result.output
+    assert "Matches Found: 1" in result.output
+    assert "- [pid: 1] src/main/kotlin/com/example/UserService.kt (com.example.UserService)" in result.output
+    assert "Next Step: Run `sc_exec impact" in result.output
+
+def test_impact_command():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["impact", "--fqn", "com.example.UserRepository"])
+    assert result.exit_code == 0
+    assert "Resource: Impact Analysis | Target: com.example.UserRepository" in result.output
+    assert "Nodes Impacted: 3" in result.output
+    assert "Next Step: Run `sc_exec status` for workspace overview." in result.output

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "project-map-cli"
+version = "0.1.0"
+description = "Agent-Native architectural awareness and token-efficient repository exploration."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pytest",
+    "networkx>=3.0",
+    "mcp>=1.0.0",
+    "click>=8.0.0"
+]
+
+[project.scripts]
+project-map = "project_map_cli.cli.main:cli"
+project-map-mcp = "project_map_cli.mcp.server:main"

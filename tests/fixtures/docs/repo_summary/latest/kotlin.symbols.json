@@ -1,0 +1,22 @@
+{
+  "symbols": [
+    {
+      "pid": 1,
+      "name": "UserService",
+      "qname": "com.example.UserService",
+      "kind": "class"
+    },
+    {
+      "pid": 2,
+      "name": "UserController",
+      "qname": "com.example.UserController",
+      "kind": "class"
+    },
+    {
+      "pid": 3,
+      "name": "UserRepository",
+      "qname": "com.example.UserRepository",
+      "kind": "class"
+    }
+  ]
+}

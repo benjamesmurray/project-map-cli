@@ -1,0 +1,10 @@
+{
+  "edges": [
+    {
+      "from_fqn": "com.example.UserService",
+      "from_type": "code",
+      "to": "user.events.v1",
+      "to_type": "topic"
+    }
+  ]
+}

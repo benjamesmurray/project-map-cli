@@ -1,0 +1,8 @@
+{
+  "version": "v6",
+  "gsi": {
+    "com.example.UserService": "edges_1.json",
+    "com.example.UserController": "edges_1.json",
+    "com.example.UserRepository": "edges_1.json"
+  }
+}

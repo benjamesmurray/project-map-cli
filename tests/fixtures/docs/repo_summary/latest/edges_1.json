@@ -1,0 +1,18 @@
+{
+  "edges": {
+    "com.example.UserController": [
+      {
+        "dst": "com.example.UserService",
+        "pid": 2,
+        "ln": 15
+      }
+    ],
+    "com.example.UserService": [
+      {
+        "dst": "com.example.UserRepository",
+        "pid": 1,
+        "ln": 25
+      }
+    ]
+  }
+}
