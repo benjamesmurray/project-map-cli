@@ -8,7 +8,7 @@ from project_map_cli.cli.main import cli
 def set_env(monkeypatch):
     # Point the CLI to use our fixtures
     fixture_root = str(Path(__file__).parent / "fixtures")
-    monkeypatch.setenv("WDE_ROOT", fixture_root)
+    monkeypatch.setenv("PROJECT_ROOT", fixture_root)
 
 def test_find_command():
     runner = CliRunner()

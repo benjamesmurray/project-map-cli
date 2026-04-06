@@ -18,7 +18,7 @@ from .symbol_registry import SymbolRegistry
 _RE_KAFKA_IMPORT = re.compile(r"org\.apache\.kafka\.streams", re.MULTILINE)
 _RE_STREAM_LIKE = re.compile(r"\.(?:stream|table|to|through)\s*\(", re.MULTILINE)
 
-# const val TOPIC = "wde.bars.raw.v5"
+# const val TOPIC = "company.bars.raw.v5"
 _RE_CONST_TOPIC = re.compile(
     r"""\bconst\s+val\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<lit>"[^"\n]*"|\"\"\".*?\"\"\")""",
     re.DOTALL,

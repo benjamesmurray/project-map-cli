@@ -5,9 +5,9 @@ from project_map_cli.core.query_engine import QueryEngine
 
 @pytest.fixture
 def test_engine():
-    # Setup the WDE_ROOT to point to our test fixtures directory
-    wde_root = str(Path(__file__).parent / "fixtures")
-    return QueryEngine(wde_root=wde_root)
+    # Setup the PROJECT_ROOT to point to our test fixtures directory
+    project_root = str(Path(__file__).parent / "fixtures")
+    return QueryEngine(project_root=project_root)
 
 def test_resolve_pids(test_engine):
     pids = ["1", "3", "99"]

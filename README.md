@@ -33,7 +33,7 @@ Follow these steps to add `project-map-cli` to your local environment.
 
 ### Requirements
 - Python 3.10 or higher
-- Access to repository digest data (default: `/opt/wde/docs/repo_summary/latest`)
+- Access to repository digest data (default: `/opt/project/docs/repo_summary/latest`)
 
 ## Command-Line Interface (CLI) Documentation
 
@@ -60,7 +60,7 @@ Analyzes the architectural impact of modifying a specific symbol.
 ## Input/Output Specifications
 
 ### Data Formats (Input)
-The tool expects a structured repository digest at `/opt/wde/docs/repo_summary/latest` (configurable via `WDE_ROOT` environment variable). This digest consists of:
+The tool expects a structured repository digest at `/opt/project/docs/repo_summary/latest` (configurable via `PROJECT_ROOT` environment variable). This digest consists of:
 *   `metadata.json`: Global symbol index (GSI) mapping FQNs to shard files.
 *   `paths.json`: Map of project IDs (PIDs) to relative file paths.
 *   `*.symbols.json`: Shards containing symbol definitions for specific languages.
@@ -117,7 +117,6 @@ We welcome contributions! Follow these steps to set up your development environm
     ```
 3.  **Running Tests:**
     *   **Unit Tests:** `pytest tests/` (uses mocked data in `tests/fixtures/`).
-    *   **End-to-End Tests:** `./scripts/test_against_wde.sh` (requires a valid `WDE_ROOT`).
 4.  **Code Style:** Adhere to existing patterns in `src/project_map_cli/core/analyzers/` for adding new language support.
 
 ## Legal Information

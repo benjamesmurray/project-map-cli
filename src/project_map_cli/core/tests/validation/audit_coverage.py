@@ -15,7 +15,7 @@ def audit_repo(root: Path, out_dir: Path):
     
     # Run the tool
     args = [
-        sys.executable, "-m", "infra.digest_tool_v6",
+        sys.executable, "-m", "project_map_cli.core",
         "--root", str(root),
         "--out-dir", str(out_dir),
         "--no-timestamp",
@@ -116,4 +116,4 @@ def audit_repo(root: Path, out_dir: Path):
             print(f)
 
 if __name__ == "__main__":
-    audit_repo(Path("/opt/wde"), Path("/tmp/audit_out"))
+    audit_repo(Path("/opt/project"), Path("/tmp/audit_out"))

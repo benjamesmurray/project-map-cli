@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Set, Tuple, Optional
 import networkx as nx
 
 class QueryEngine:
-    def __init__(self, wde_root: Optional[str] = None):
-        self.wde_root = wde_root or os.environ.get("WDE_ROOT", "/opt/wde")
-        self.digest_root = Path(self.wde_root) / "docs/repo_summary/latest"
+    def __init__(self, project_root: Optional[str] = None):
+        self.project_root = project_root or os.environ.get("PROJECT_ROOT", "/opt/project")
+        self.digest_root = Path(self.project_root) / "docs/repo_summary/latest"
         
         self.paths_cache: Optional[Dict[str, str]] = None
         self.metadata_cache: Optional[Dict[str, Any]] = None

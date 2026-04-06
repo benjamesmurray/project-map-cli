@@ -13,22 +13,22 @@
 
 ## Execution
 
-The tool is located at `/opt/wde/infra/digest_tool_v6` and should be executed via the `run.sh` wrapper which manages the environment.
+The tool should be executed as a Python module:
 
 ```bash
-/opt/wde/infra/digest_tool_v6/run.sh \
-  --root /opt/wde \
-  --out-dir /opt/wde/docs/repo_summary \
+python -m project_map_cli.core \
+  --root /opt/project \
+  --out-dir /opt/project/docs/repo_summary \
   --bundle-all \
-  --exclude-spec /opt/wde/utils/exclude_spec.py
+  --exclude-spec /opt/project/utils/exclude_spec.py
 ```
 
 ### Manual Python Execution
 If running directly via python, ensure `PYTHONPATH` includes the workspace root:
 
 ```bash
-export PYTHONPATH="/opt/wde"
-/opt/wde/infra/digest_tool_v6/venv/bin/python3 -m infra.digest_tool_v6 [ARGS]
+export PYTHONPATH="/opt/project"
+python -m project_map_cli.core [ARGS]
 ```
 
 ---
@@ -40,16 +40,16 @@ Use this for architecture/refactor planning, impact analysis, or when you need b
 
 ```bash
 # Example for full scan
-/opt/wde/infra/digest_tool_v6/run.sh \
-  --root /opt/wde \
-  --out-dir /opt/wde/docs/repo_summary \
+python -m project_map_cli.core \
+  --root /opt/project \
+  --out-dir /opt/project/docs/repo_summary \
   --max-callsites 5 \
   --max-hotspots 10 \
   --max-entry-points 10 \
   --max-top-symbols 10 \
   --max-shard-mb 2 \
   --bundle-all \
-  --exclude-spec /opt/wde/utils/exclude_spec.py \
+  --exclude-spec /opt/project/utils/exclude_spec.py \
   --db-url-env TIMESCALE_DSN \
   --traceback
 ```
@@ -59,9 +59,9 @@ Use this for architecture/refactor planning, impact analysis, or when you need b
 Use this for endpoint/UI-only work (FE → FastAPI glue, model field diffs). Kotlin analysis is **restricted to “hot” files** only (Kafka Streams imports or `.stream(` usage) and uses tighter caps.
 
 ```bash
-/opt/wde/infra/digest_tool_v6/run.sh \
-  --root /opt/wde \
-  --out-dir /opt/wde/docs/repo_summary \
+python -m project_map_cli.core \
+  --root /opt/project \
+  --out-dir /opt/project/docs/repo_summary \
   --profile light
 ```
 
