@@ -73,13 +73,9 @@ async def handle_call_tool(
     Handle tool execution requests.
     """
     if name == "sc_status":
-        status_text = (
-            "Workspace: project-map-cli\n"
-            "Phase: Discovery\n"
-            "Available CLI Commands: find, impact, status\n\n"
-            "Next Step: Run `sc_help --topic find` or execute a query with `sc_exec --command 'find --query User'`."
-        )
-        return [TextContent(type="text", text=status_text)]
+        runner = CliRunner()
+        result = runner.invoke(main_cli, ["status"])
+        return [TextContent(type="text", text=result.output)]
 
     elif name == "sc_help":
         topic = arguments.get("topic", "")

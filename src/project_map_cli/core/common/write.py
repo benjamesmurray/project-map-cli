@@ -1,12 +1,10 @@
-# utils/digest_tool_v2/common/write.py
-from __future__ import annotations
-
 import io
 import json
+import math
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 # Default cap aligns with v2 spec (2 MB). Orchestrator can override per-call.
 _DEFAULT_MAX_BYTES = 2 * 1024 * 1024
@@ -83,3 +81,67 @@ def write_json(path: Path, data: Any, *, max_bytes: Optional[int] = None) -> Non
         )
 
     _atomic_write_bytes(path, payload)
+
+
+def write_json_sharded(
+    path: Path,
+    data: Dict[str, Any],
+    list_key: str,
+    *,
+    max_bytes: Optional[int] = None
+) -> List[str]:
+    """
+    Similar to write_json, but if 'data' exceeds 'max_bytes', it splits
+    'data[list_key]' (which must be a list) into multiple shards.
+    
+    The first shard is written to 'path', subsequent shards to 'stem.part1.suffix', etc.
+    Returns the list of filenames created (relative to path.parent).
+    """
+    cap = _DEFAULT_MAX_BYTES if max_bytes is None else int(max_bytes)
+    payload = _to_bytes(data)
+    if len(payload) <= cap:
+        write_json(path, data, max_bytes=cap)
+        return [path.name]
+
+    # Must split.
+    items = data.get(list_key)
+    if not isinstance(items, list):
+        # Fall back to standard error if we can't split
+        write_json(path, data, max_bytes=cap)
+        return [path.name]
+
+    # Estimation: total_payload / len(items)
+    # We'll use a conservative approach: split into N parts.
+    # N = ceil(len(payload) / cap * 1.2) to be safe.
+    num_shards = math.ceil(len(payload) / cap * 1.2)
+    chunk_size = math.ceil(len(items) / num_shards)
+    
+    filenames = []
+    header = {k: v for k, v in data.items() if k != list_key}
+    
+    for i in range(num_shards):
+        start = i * chunk_size
+        end = start + chunk_size
+        chunk = items[start:end]
+        if not chunk and i > 0:
+            break
+            
+        shard_data = dict(header)
+        shard_data[list_key] = chunk
+        
+        # Determine filename
+        if i == 0:
+            target = path
+        else:
+            target = path.parent / f"{path.stem}.part{i}{path.suffix}"
+            
+        try:
+            write_json(target, shard_data, max_bytes=cap)
+        except ValueError:
+            # If still too big, try smaller chunks (halve it)
+            # For simplicity, we'll just fail for now, but this is less likely.
+            raise
+            
+        filenames.append(target.name)
+        
+    return filenames

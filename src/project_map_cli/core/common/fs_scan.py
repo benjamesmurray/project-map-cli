@@ -92,6 +92,8 @@ def scan(cfg: Config) -> Dict[str, List[Path]]:
     # New buckets
     gradle_files: List[Path] = []
     kt_files: List[Path] = []
+    go_files: List[Path] = []
+    rs_files: List[Path] = []
     config_files: List[Path] = []
 
     for p in all_files:
@@ -100,6 +102,10 @@ def scan(cfg: Config) -> Dict[str, List[Path]]:
             gradle_files.append(p)
         elif cfg.is_kotlin_file(p):
             kt_files.append(p)
+        elif cfg.is_go_file(p):
+            go_files.append(p)
+        elif cfg.is_rust_file(p):
+            rs_files.append(p)
 
         # Config files (can overlap with gradle.properties; allow overlap intentionally)
         if cfg.is_config_file(p):
@@ -108,6 +114,8 @@ def scan(cfg: Config) -> Dict[str, List[Path]]:
     # De-dup + deterministic ordering
     gradle_files = sorted(set(gradle_files), key=lambda p: p.as_posix())
     kt_files = sorted(set(kt_files), key=lambda p: p.as_posix())
+    go_files = sorted(set(go_files), key=lambda p: p.as_posix())
+    rs_files = sorted(set(rs_files), key=lambda p: p.as_posix())
     config_files = sorted(set(config_files), key=lambda p: p.as_posix())
 
     # Deterministic order is preserved by the initial sorted walk
@@ -120,6 +128,8 @@ def scan(cfg: Config) -> Dict[str, List[Path]]:
         "sql_files": sql_files,
         "sqlite_files": sqlite_files,
         "kt_files": kt_files,
+        "go_files": go_files,
+        "rs_files": rs_files,
         "gradle_files": gradle_files,
         "config_files": config_files,
         "all_files": all_files,

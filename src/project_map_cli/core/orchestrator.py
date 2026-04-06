@@ -31,6 +31,9 @@ from .analyzers import (
     python_symbols,
     typescript_symbols,
     vue_analyzer,
+    # Go/Rust
+    go_symbols,
+    rust_symbols,
 )
 from .common import graph_serialization
 from .bundle import make_all as make_bundle
@@ -53,24 +56,24 @@ def _ensure_dirs(out_dir: Path, make_ctor: bool, make_files_index: bool) -> Dict
 def _write_nav(
     out_dir: Path,
     run_id: str,
-    filenames: Dict[str, str],
+    filenames: Dict[str, str | List[str]],
     include_ctor: bool,
     include_fi: bool,
     max_bytes: int,
 ) -> None:
     nav_doc = {
         "run_id": run_id,
-        "digest": filenames["digest.top.json"],
-        "analyzers": filenames["analyzers.repo_only.json"],
-        "ctor_top": filenames["ctor.top.json"],
+        "digest": filenames.get("digest.top.json"),
+        "analyzers": filenames.get("analyzers.repo_only.json"),
+        "ctor_top": filenames.get("ctor.top.json"),
         "ctor_items_root": "ctor.items/" if include_ctor else None,
         "files_index_root": "files_index/" if include_fi else None,
-        "paths_map": filenames["paths.json"],
-        "api_routes": filenames["api.routes.json"],
-        "pydantic_models": filenames["pydantic.models.json"],
-        "fe_calls": filenames["fe.calls.json"],
-        "db_schema": filenames["db.schema.json"],
-        "api_clients_map": filenames["api_clients.map.json"],
+        "paths_map": filenames.get("paths.json"),
+        "api_routes": filenames.get("api.routes.json"),
+        "pydantic_models": filenames.get("pydantic.models.json"),
+        "fe_calls": filenames.get("fe.calls.json"),
+        "db_schema": filenames.get("db.schema.json"),
+        "api_clients_map": filenames.get("api_clients.map.json"),
         # v3 additions
         "gradle_modules": filenames.get("gradle.modules.json"),
         "kotlin_symbols": filenames.get("kotlin.symbols.json"),
@@ -83,6 +86,9 @@ def _write_nav(
         "python_symbols": filenames.get("python.symbols.json"),
         "typescript_symbols": filenames.get("typescript.symbols.json"),
         "vue_symbols": filenames.get("vue.symbols.json"),
+        # Go/Rust
+        "go_symbols": filenames.get("go.symbols.json"),
+        "rust_symbols": filenames.get("rust.symbols.json"),
     }
     write.write_json(out_dir / "nav.json", nav_doc, max_bytes=max_bytes)
 
@@ -107,9 +113,10 @@ def _kotlin_hot_files(cfg: Config, kt_files: List[Path]) -> List[Path]:
 
 
 def run(cfg: Config) -> None:
+    start_time = datetime.now(timezone.utc)
     # Decide final output directory (timestamped subfolder if requested)
     if cfg.timestamped_out:
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        ts = start_time.strftime("%Y%m%d_%H%M%S")
         final_out = cfg.out_dir / ts
     else:
         final_out = cfg.out_dir
@@ -131,6 +138,10 @@ def run(cfg: Config) -> None:
     kt_files: List[Path] = scan.get("kt_files", [])
     gradle_files: List[Path] = scan.get("gradle_files", [])
     config_files: List[Path] = scan.get("config_files", [])
+
+    # v6/new buckets
+    go_files: List[Path] = scan.get("go_files", [])
+    rs_files: List[Path] = scan.get("rs_files", [])
 
     # Enforce profile-based caps early (cheap)
     # Kotlin symbols scope:
@@ -199,7 +210,7 @@ def run(cfg: Config) -> None:
 
     run_id = f"run_{hashing.stable_hash(paths_json)[7:19]}"
 
-    filenames: Dict[str, str] = {
+    filenames: Dict[str, str | List[str]] = {
         "paths.json": "paths.json",
         "digest.top.json": "digest.top.json",
         "analyzers.repo_only.json": "analyzers.repo_only.json",
@@ -221,11 +232,24 @@ def run(cfg: Config) -> None:
         "python.symbols.json": "python.symbols.json",
         "typescript.symbols.json": "typescript.symbols.json",
         "vue.symbols.json": "vue.symbols.json",
+        # Go/Rust
+        "go.symbols.json": "go.symbols.json",
+        "rust.symbols.json": "rust.symbols.json",
     }
 
-    # Pre-initialize all shard files with minimal valid JSON to ensure nav.json remains valid 
-    # and tests don't fail on missing files.
-    for fname in filenames.values():
+    errors: List[Dict[str, str]] = []
+
+    def safe_analyze(name, analyzer_func, *args, **kwargs):
+        try:
+            return analyzer_func(*args, **kwargs)
+        except Exception as exc:
+            msg = f"Analyzer '{name}' failed: {exc}"
+            print(f"[digest_tool_v3] ERROR: {msg}")
+            errors.append({"analyzer": name, "error": str(exc)})
+            return None
+
+    # Pre-initialize all shard files with minimal valid JSON
+    for fname in [fn for fn in filenames.values() if isinstance(fn, str)]:
         fpath = final_out / fname
         if fname == "db.schema.json":
             write.write_json(fpath, {"tables": [], "orm_models": []}, max_bytes=cfg.max_shard_bytes)
@@ -243,8 +267,8 @@ def run(cfg: Config) -> None:
     # files_index (sharded) — only in full profile
     fi_stats: Dict[str, Any] = {}
     if include_files_index:
-        try:
-            fi_result = files_index.analyze(cfg, py_files, pid_by_path)
+        fi_result = safe_analyze("files_index", files_index.analyze, cfg, py_files, pid_by_path)
+        if fi_result:
             fi_stats = fi_result.get("stats", {})
             for shard_name, shard_doc in fi_result["shards"].items():
                 write.write_json(
@@ -252,119 +276,97 @@ def run(cfg: Config) -> None:
                     shard_doc,
                     max_bytes=cfg.max_shard_bytes,
                 )
-        except Exception as exc:
-            print(f"[digest_tool_v3] ERROR: Failed to analyze files index: {exc}")
 
     # repo-only import graph
-    imports_doc = imports_repo_only.analyze(cfg, py_files, pid_by_path)
-    write.write_json(final_out / filenames["analyzers.repo_only.json"], imports_doc, max_bytes=cfg.max_shard_bytes)
+    imports_doc = safe_analyze("imports_repo_only", imports_repo_only.analyze, cfg, py_files, pid_by_path)
+    if imports_doc:
+        write.write_json(final_out / "analyzers.repo_only.json", imports_doc, max_bytes=cfg.max_shard_bytes)
 
     # ctor signatures: top + items (items only in full profile)
-    ctor_top_doc, ctor_items = ctor_signatures.analyze(cfg, py_files, pid_by_path)
-    write.write_json(final_out / filenames["ctor.top.json"], ctor_top_doc, max_bytes=cfg.max_shard_bytes)
-    if include_ctor_items:
-        for module_name, item_doc in ctor_items.items():
-            write.write_json(
-                dirs["ctor_items"] / f"{module_name}.json",
-                item_doc,
-                max_bytes=cfg.max_shard_bytes,
-            )
+    ctor_res = safe_analyze("ctor_signatures", ctor_signatures.analyze, cfg, py_files, pid_by_path)
+    if ctor_res:
+        ctor_top_doc, ctor_items = ctor_res
+        write.write_json(final_out / "ctor.top.json", ctor_top_doc, max_bytes=cfg.max_shard_bytes)
+        if include_ctor_items:
+            for module_name, item_doc in ctor_items.items():
+                write.write_json(
+                    dirs["ctor_items"] / f"{module_name}.json",
+                    item_doc,
+                    max_bytes=cfg.max_shard_bytes,
+                )
 
     # digest.top.json (depends on fi_stats + imports_doc)
-    digest_doc = digest_top.analyze(cfg=cfg, files_index_stats=fi_stats, imports_doc=imports_doc)
-    write.write_json(final_out / filenames["digest.top.json"], digest_doc, max_bytes=cfg.max_shard_bytes)
+    if fi_stats and imports_doc:
+        digest_doc = safe_analyze("digest_top", digest_top.analyze, cfg=cfg, files_index_stats=fi_stats, imports_doc=imports_doc)
+        if digest_doc:
+            write.write_json(final_out / "digest.top.json", digest_doc, max_bytes=cfg.max_shard_bytes)
 
     # FastAPI routes
-    try:
-        api_routes_doc = fastapi_routes.analyze(cfg, py_files, pid_by_path)
-        write.write_json(final_out / filenames["api.routes.json"], api_routes_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze FastAPI routes: {exc}")
+    api_routes_doc = safe_analyze("fastapi_routes", fastapi_routes.analyze, cfg, py_files, pid_by_path)
+    if api_routes_doc:
+        write.write_json(final_out / "api.routes.json", api_routes_doc, max_bytes=cfg.max_shard_bytes)
+    else:
         api_routes_doc = {"routes": []}
-        write.write_json(final_out / filenames["api.routes.json"], api_routes_doc, max_bytes=cfg.max_shard_bytes)
 
     # Pydantic models
-    try:
-        pydantic_doc = pydantic_models.analyze(cfg, py_files, pid_by_path)
-        write.write_json(final_out / filenames["pydantic.models.json"], pydantic_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze Pydantic models: {exc}")
-        write.write_json(final_out / filenames["pydantic.models.json"], {"models": []}, max_bytes=cfg.max_shard_bytes)
+    pydantic_doc = safe_analyze("pydantic_models", pydantic_models.analyze, cfg, py_files, pid_by_path)
+    if pydantic_doc:
+        write.write_json(final_out / "pydantic.models.json", pydantic_doc, max_bytes=cfg.max_shard_bytes)
 
     # Frontend calls
-    try:
-        fe_calls_doc = fe_calls.analyze(cfg, fe_files, pid_by_path)
-        write.write_json(final_out / filenames["fe.calls.json"], fe_calls_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze FE calls: {exc}")
+    fe_calls_doc = safe_analyze("fe_calls", fe_calls.analyze, cfg, fe_files, pid_by_path)
+    if fe_calls_doc:
+        write.write_json(final_out / "fe.calls.json", fe_calls_doc, max_bytes=cfg.max_shard_bytes)
+    else:
         fe_calls_doc = {"calls": []}
-        write.write_json(final_out / filenames["fe.calls.json"], fe_calls_doc, max_bytes=cfg.max_shard_bytes)
 
     # Database schema
-    try:
-        db_schema_doc = db_schema.analyze(cfg, py_files, sql_files, sqlite_files, pid_by_path)
-        write.write_json(final_out / filenames["db.schema.json"], db_schema_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze DB schema: {exc}")
-        write.write_json(final_out / filenames["db.schema.json"], {"tables": [], "orm_models": []}, max_bytes=cfg.max_shard_bytes)
+    db_schema_doc = safe_analyze("db_schema", db_schema.analyze, cfg, py_files, sql_files, sqlite_files, pid_by_path)
+    if db_schema_doc:
+        write.write_json(final_out / "db.schema.json", db_schema_doc, max_bytes=cfg.max_shard_bytes)
 
     # FE↔API link map
-    try:
-        api_clients_map_doc = api_clients_map.analyze(cfg, api_routes_doc, fe_calls_doc)
-        write.write_json(final_out / filenames["api_clients.map.json"], api_clients_map_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze FE-API map: {exc}")
-        write.write_json(final_out / filenames["api_clients.map.json"], {"links": []}, max_bytes=cfg.max_shard_bytes)
+    if api_routes_doc and fe_calls_doc:
+        api_clients_map_doc = safe_analyze("api_clients_map", api_clients_map.analyze, cfg, api_routes_doc, fe_calls_doc)
+        if api_clients_map_doc:
+            write.write_json(final_out / "api_clients.map.json", api_clients_map_doc, max_bytes=cfg.max_shard_bytes)
 
     # ---------------------------------------------------------------------
-    # v6 analyzers (Python/TypeScript/Vue symbols)
+    # v6/v7 analyzers (Symbols per language)
     # ---------------------------------------------------------------------
     
-    # Python symbols
-    try:
-        python_symbols_doc = python_symbols.analyze(cfg, py_files, pid_by_path)
-        write.write_json(final_out / filenames["python.symbols.json"], python_symbols_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze Python symbols: {exc}")
-        write.write_json(final_out / filenames["python.symbols.json"], {"symbols": []}, max_bytes=cfg.max_shard_bytes)
-    
-    # TypeScript/JS symbols
-    try:
-        ts_files = scan.get("ts_files", []) # Ensure we use all TS files
-        typescript_symbols_doc = typescript_symbols.analyze(cfg, ts_files, pid_by_path)
-        write.write_json(final_out / filenames["typescript.symbols.json"], typescript_symbols_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze TS symbols: {exc}")
-        write.write_json(final_out / filenames["typescript.symbols.json"], {"symbols": []}, max_bytes=cfg.max_shard_bytes)
-    
-    # Vue symbols
-    try:
-        vue_symbols_doc = vue_analyzer.analyze(cfg, vue_files, pid_by_path)
-        write.write_json(final_out / filenames["vue.symbols.json"], vue_symbols_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze Vue symbols: {exc}")
-        write.write_json(final_out / filenames["vue.symbols.json"], {"symbols": []}, max_bytes=cfg.max_shard_bytes)
+    symbol_analyzers = [
+        ("python", python_symbols.analyze, py_files, "python.symbols.json"),
+        ("typescript", typescript_symbols.analyze, scan.get("ts_files", []), "typescript.symbols.json"),
+        ("vue", vue_analyzer.analyze, scan.get("vue_files", []), "vue.symbols.json"),
+        ("go", go_symbols.analyze, go_files, "go.symbols.json"),
+        ("rust", rust_symbols.analyze, rs_files, "rust.symbols.json"),
+    ]
+
+    for lang_name, analyzer_func, files, out_fn in symbol_analyzers:
+        doc = safe_analyze(f"{lang_name}_symbols", analyzer_func, cfg, files, pid_by_path)
+        if doc:
+            filenames[out_fn] = write.write_json_sharded(
+                final_out / out_fn, doc, "symbols", max_bytes=cfg.max_shard_bytes
+            )
 
     # ---------------------------------------------------------------------
     # v3 analyzers (Gradle/Kotlin/Kafka Streams)
     # ---------------------------------------------------------------------
 
     # Gradle module/deps discovery
-    try:
-        gradle_doc = gradle_modules.analyze(cfg, gradle_files, pid_by_path)
-        write.write_json(final_out / filenames["gradle.modules.json"], gradle_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze Gradle modules: {exc}")
-        write.write_json(final_out / filenames["gradle.modules.json"], {"modules": []}, max_bytes=cfg.max_shard_bytes)
+    gradle_doc = safe_analyze("gradle_modules", gradle_modules.analyze, cfg, gradle_files, pid_by_path)
+    if gradle_doc:
+        write.write_json(final_out / "gradle.modules.json", gradle_doc, max_bytes=cfg.max_shard_bytes)
 
-    # Kotlin symbols MUST run before Kafka Streams EDA so we can pass the doc through
-    try:
-        kotlin_symbols_doc = kotlin_symbols.analyze(cfg, kt_files_for_symbols, pid_by_path)
-        write.write_json(final_out / filenames["kotlin.symbols.json"], kotlin_symbols_doc, max_bytes=cfg.max_shard_bytes)
-    except Exception as exc:
-        print(f"[digest_tool_v3] ERROR: Failed to analyze Kotlin symbols: {exc}")
+    # Kotlin symbols
+    kotlin_symbols_doc = safe_analyze("kotlin_symbols", kotlin_symbols.analyze, cfg, kt_files_for_symbols, pid_by_path)
+    if kotlin_symbols_doc:
+        filenames["kotlin.symbols.json"] = write.write_json_sharded(
+            final_out / "kotlin.symbols.json", kotlin_symbols_doc, "symbols", max_bytes=cfg.max_shard_bytes
+        )
+    else:
         kotlin_symbols_doc = {"symbols": []}
-        write.write_json(final_out / filenames["kotlin.symbols.json"], kotlin_symbols_doc, max_bytes=cfg.max_shard_bytes)
 
     # -------------------------------------
     # v5 analyzers (Graph Relationship Shards)
@@ -372,27 +374,19 @@ def run(cfg: Config) -> None:
     try:
         # 1. Global Symbol Registry
         registry = symbol_registry.analyze(cfg, kt_files_for_symbols, pid_by_path)
-        print(f"DEBUG: Symbol Registry built with {len(registry.symbols)} symbols across {len(registry.files)} files.")
-
+        
         # 2. Call Graph
         call_graph = kotlin_calls.analyze(cfg, kt_files_for_symbols, pid_by_path, registry)
-        print(f"DEBUG: Call Graph built with {call_graph.number_of_nodes()} nodes and {call_graph.number_of_edges()} edges.")
-
+        
         # 3. Inheritance
         inheritance_graph = inheritance.analyze(cfg, kt_files_for_symbols, pid_by_path, registry)
-        print(f"DEBUG: Inheritance Graph built with {inheritance_graph.number_of_nodes()} nodes and {inheritance_graph.number_of_edges()} edges.")
 
-        # -------------------------------------
-        # Kafka Streams EDA (moved after Registry for attribution)
-        # -------------------------------------
+        # Kafka Streams EDA
         kafka_eda_doc = kafka_streams_eda.analyze(
-            cfg,
-            kt_files_for_eda,
-            config_files,
-            pid_by_path,
-            registry=registry,
+            cfg, kt_files_for_eda, config_files, pid_by_path, registry=registry
         )
-        write.write_json(final_out / filenames["kafka.streams_eda.json"], kafka_eda_doc, max_bytes=cfg.max_shard_bytes)
+        if kafka_eda_doc:
+            write.write_json(final_out / "kafka.streams_eda.json", kafka_eda_doc, max_bytes=cfg.max_shard_bytes)
 
         # Serialization
         calls_shard = graph_serialization.serialize_graph_to_edge_list(call_graph, shard_id="kotlin_calls")
@@ -401,8 +395,6 @@ def run(cfg: Config) -> None:
         inheritance_shard = graph_serialization.serialize_graph_to_edge_list(inheritance_graph, shard_id="inheritance")
         write.write_json(final_out / "inheritance.json", inheritance_shard, max_bytes=cfg.max_shard_bytes)
 
-        # Inverse Calls (Optimization for Stage 2)
-        # Use NetworkX to flip the graph and serialize
         inverse_call_graph = call_graph.reverse(copy=True)
         inverse_shard = graph_serialization.serialize_graph_to_edge_list(inverse_call_graph, shard_id="inverse_calls")
         write.write_json(final_out / "inverse_calls.json", inverse_shard, max_bytes=cfg.max_shard_bytes)
@@ -410,22 +402,27 @@ def run(cfg: Config) -> None:
         # GSI (Global Symbol Index)
         gsi = {qn: "kotlin_calls.json" for qn in registry.symbols.keys()}
         
-        # Metadata should be deterministic if timestamped_out is False
         metadata = {
             "version": "1.0.0",
-            "capabilities": ["call_graph", "inheritance", "kafka_bridge"],
+            "status": "partial" if errors else "success",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "duration_sec": (datetime.now(timezone.utc) - start_time).total_seconds(),
+            "capabilities": ["call_graph", "inheritance", "kafka_bridge", "go_support", "rust_support", "sharding"],
+            "errors": errors,
             "gsi": gsi
         }
-        if cfg.timestamped_out:
-            metadata["generated_at"] = datetime.now(timezone.utc).isoformat()
-
         write.write_json(final_out / "metadata.json", metadata, max_bytes=cfg.max_shard_bytes)
     except Exception as exc:
         print(f"[digest_tool_v3] ERROR: Failed to analyze Graph/Kafka relations: {exc}")
-        # Write empty shards if they don't exist
-        for missing in ["kafka.streams_eda.json", "kotlin_calls.json", "inheritance.json", "inverse_calls.json", "metadata.json"]:
-            if not (final_out / missing).exists():
-                write.write_json(final_out / missing, {}, max_bytes=cfg.max_shard_bytes)
+        errors.append({"analyzer": "graph_v5", "error": str(exc)})
+        metadata = {
+            "version": "1.0.0",
+            "status": "partial",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "duration_sec": (datetime.now(timezone.utc) - start_time).total_seconds(),
+            "errors": errors,
+        }
+        write.write_json(final_out / "metadata.json", metadata, max_bytes=cfg.max_shard_bytes)
 
     # nav.json
     _write_nav(

@@ -47,7 +47,7 @@ python -m project_map_cli.core \
   --max-hotspots 10 \
   --max-entry-points 10 \
   --max-top-symbols 10 \
-  --max-shard-mb 2 \
+  --max-shard-mb 10 \
   --bundle-all \
   --exclude-spec /opt/project/utils/exclude_spec.py \
   --db-url-env TIMESCALE_DSN \

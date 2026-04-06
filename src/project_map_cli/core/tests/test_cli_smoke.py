@@ -24,7 +24,7 @@ def _count_loc_nonempty(text: str) -> int:
 
 def _run_cli(root: Path, out_dir: Path, extra_args: List[str] | None = None) -> subprocess.CompletedProcess:
     args = [
-        sys.executable, "-m", "infra.digest_tool_v6",
+        sys.executable, "-m", "project_map_cli.core",
         "--root", str(root),
         "--out-dir", str(out_dir),
         "--no-timestamp",
@@ -33,7 +33,7 @@ def _run_cli(root: Path, out_dir: Path, extra_args: List[str] | None = None) -> 
         "--max-hotspots", "5",
         "--max-entry-points", "5",
         "--max-top-symbols", "5",
-        "--max-shard-mb", "2",
+        "--max-shard-mb", "10",
     ]
     if extra_args:
         args.extend(extra_args)
@@ -135,6 +135,15 @@ def _compare_files_excluding_run_id(dir1: Path, dir2: Path) -> Tuple[bool, List[
             j2_wo = {k: v for k, v in j2.items() if k != "run_id"}
             if j1_wo != j2_wo:
                 diffs.append(f"nav.json differs (excluding run_id)")
+        elif rel == "metadata.json":
+            j1 = _load_json(p1)
+            j2 = _load_json(p2)
+            # Ignore generated_at and duration_sec for determinism tests
+            ignore = {"generated_at", "duration_sec"}
+            j1_wo = {k: v for k, v in j1.items() if k not in ignore}
+            j2_wo = {k: v for k, v in j2.items() if k not in ignore}
+            if j1_wo != j2_wo:
+                diffs.append(f"metadata.json differs (excluding generated_at/duration_sec)")
         else:
             b1 = p1.read_bytes()
             b2 = p2.read_bytes()

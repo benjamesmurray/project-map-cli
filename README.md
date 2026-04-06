@@ -33,20 +33,35 @@ Follow these steps to add `project-map-cli` to your local environment.
 
 ### Requirements
 - Python 3.10 or higher
-- Access to repository digest data (default: `/opt/project/docs/repo_summary/latest`)
+- tree-sitter-language-pack (included in dependencies)
 
 ## Command-Line Interface (CLI) Documentation
 
-The `project-map` command provides several subcommands for repository exploration.
+The `project-map` command provides several subcommands for repository exploration and indexing.
+
+### `project-map build` / `project-map refresh`
+Generates or updates the repository digest (the "Project Map").
+
+*   **Syntax:** `project-map build --root <path> --out-dir <path>`
+*   **Mandatory Arguments:**
+    *   `--root`: The path to the repository root to analyze.
+    *   `--out-dir`: The directory to contain the output.
+*   **Key Options:**
+    *   `--max-shard-mb`: Size cap per JSON shard (default: 10MB). Oversized shards are automatically split into `.partN.json` files.
+    *   `--profile`: `full` (default) or `light` (faster, skips some detail).
+
+### `project-map status`
+Returns the current workspace context and indexing health.
+
+*   **Syntax:** `project-map status`
+*   **Output:** Reports the last generation timestamp, indexing status (`Success` or `Partial`), and any analyzer errors recorded in `metadata.json`.
 
 ### `project-map find`
-Finds a symbol (class, function, etc.) across the codebase.
+Finds a symbol (class, function, etc.) across the codebase. Works across Python, TypeScript/JS, Kotlin, Go, and Rust.
 
 *   **Syntax:** `project-map find --query <search_string>`
 *   **Mandatory Arguments:**
     *   `--query`: The symbol name or part of the Fully Qualified Name (FQN) to search for.
-*   **Optional Flags:**
-    *   None currently.
 
 ### `project-map impact`
 Analyzes the architectural impact of modifying a specific symbol.
@@ -54,17 +69,25 @@ Analyzes the architectural impact of modifying a specific symbol.
 *   **Syntax:** `project-map impact --fqn <fully_qualified_name>`
 *   **Mandatory Arguments:**
     *   `--fqn`: The exact Fully Qualified Name of the target symbol.
-*   **Optional Flags:**
-    *   None currently.
 
 ## Input/Output Specifications
 
 ### Data Formats (Input)
-The tool expects a structured repository digest at `/opt/project/docs/repo_summary/latest` (configurable via `PROJECT_ROOT` environment variable). This digest consists of:
-*   `metadata.json`: Global symbol index (GSI) mapping FQNs to shard files.
+The tool expects a structured repository digest at `.project-map/docs/repo_summary/latest` (configurable via `PROJECT_ROOT` environment variable). This digest consists of:
+*   `nav.json`: The root index mapping keys to shard filenames (handles sharded lists).
+*   `metadata.json`: Run info, capabilities, and the global symbol index (GSI).
 *   `paths.json`: Map of project IDs (PIDs) to relative file paths.
-*   `*.symbols.json`: Shards containing symbol definitions for specific languages.
+*   `*.symbols.json`: Shards containing symbol definitions.
 *   `edges_*.json`: Dependency graph shards mapping call relationships.
+
+### Supported Languages
+Deep, AST-level support provided for:
+- **Python**: Symbols, Pydantic models, FastAPI routes.
+- **TypeScript / JavaScript / Vue**: Symbols and axios call detection.
+- **Kotlin / JVM**: Symbols, call graphs, Kafka Streams EDA.
+- **Go**: Packages, functions, types, and methods.
+- **Rust**: Structs, enums, functions, traits, modules, and impls.
+- **SQL**: Database schema extraction.
 
 ### Console Output (Output)
 `project-map-cli` uses **Token-Oriented Object Notation (TOON)** for its console output. TOON is a dense, Markdown-formatted text format designed to be highly readable for LLMs while minimizing token consumption.

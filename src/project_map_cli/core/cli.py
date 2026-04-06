@@ -38,8 +38,10 @@ def _merge_set(base: Iterable[str] | None, extra: Iterable[str] | None) -> list[
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    # If invoked via 'project-map build', adjust the prog name.
+    prog_name = "project-map build" if sys.argv[0].endswith("project-map") else "python -m project_map_cli.core"
     parser = argparse.ArgumentParser(
-        prog="python -m infra.digest_tool_v6",
+        prog=prog_name,
         description=(
             "Generate compact, deterministic, shardable JSON summaries of a code repo. "
             "Emits v4 shards."
@@ -103,7 +105,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Maximum entry points reported in digest.top.json.")
     parser.add_argument("--max-top-symbols", type=lambda s: _positive_int("--max-top-symbols", s), default=10,
                         help="Maximum top symbols reported in ctor.top.json.")
-    parser.add_argument("--max-shard-mb", type=lambda s: _positive_int("--max-shard-mb", s), default=2,
+    parser.add_argument("--max-shard-mb", type=lambda s: _positive_int("--max-shard-mb", s), default=10,
                         help="Size cap in megabytes per shard; oversize shards are split or truncated.")
 
     args = parser.parse_args(argv)

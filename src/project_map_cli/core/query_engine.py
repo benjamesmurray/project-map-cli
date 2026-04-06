@@ -37,9 +37,33 @@ class QueryEngine:
         except Exception as e:
             raise RuntimeError(f"Failed to read shard {file_name}: {e}")
 
+    def read_sharded_list(self, nav_key: str, list_key: str) -> List[Any]:
+        """
+        Reads one or more shards for a given nav_key and merges the lists found at list_key.
+        """
+        nav = self.read_json_shard("nav.json")
+        val = nav.get(nav_key)
+        if not val:
+            return []
+            
+        file_names = val if isinstance(val, list) else [val]
+        merged = []
+        for fn in file_names:
+            try:
+                data = self.read_json_shard(fn)
+                items = data.get(list_key, [])
+                if isinstance(items, list):
+                    merged.extend(items)
+            except RuntimeError:
+                continue
+        return merged
+
     def get_metadata(self) -> Dict[str, Any]:
         if not self.metadata_cache:
-            self.metadata_cache = self.read_json_shard("metadata.json")
+            try:
+                self.metadata_cache = self.read_json_shard("metadata.json")
+            except RuntimeError:
+                self.metadata_cache = {"version": "1.0.0", "status": "unknown"}
         return self.metadata_cache
 
     def resolve_pids(self, pids: List[str]) -> Dict[str, str]:
@@ -55,11 +79,25 @@ class QueryEngine:
         return result
 
     def search_symbols(self, query: str) -> List[Dict[str, Any]]:
-        shards = ["kotlin.symbols.json", "python.symbols.json", "typescript.symbols.json"]
+        nav_keys = ["kotlin_symbols", "python_symbols", "typescript_symbols", "go_symbols", "rust_symbols"]
         all_matches = []
         q_lower = query.lower()
 
-        for shard in shards:
+        # Try to find shards from nav.json, or fallback to defaults
+        shards_to_read = []
+        try:
+            nav = self.read_json_shard("nav.json")
+            for key in nav_keys:
+                val = nav.get(key)
+                if isinstance(val, list):
+                    shards_to_read.extend(val)
+                elif val:
+                    shards_to_read.append(val)
+        except RuntimeError:
+            # Fallback to defaults
+            shards_to_read = ["kotlin.symbols.json", "python.symbols.json", "typescript.symbols.json", "go.symbols.json", "rust.symbols.json"]
+
+        for shard in shards_to_read:
             try:
                 data = self.read_json_shard(shard)
                 symbols = data.get("symbols", [])

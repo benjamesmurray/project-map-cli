@@ -7,7 +7,7 @@ from .verify import ShardLoader, SignalAssertions
 
 def run_tool(root: Path, out_dir: Path) -> SignalAssertions:
     args = [
-        sys.executable, "-m", "infra.digest_tool_v6",
+        sys.executable, "-m", "project_map_cli.core",
         "--root", str(root),
         "--out-dir", str(out_dir),
         "--no-timestamp",

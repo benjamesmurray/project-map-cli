@@ -66,7 +66,7 @@ class Config:
     max_hotspots: int = 10
     max_entry_points: int = 10
     max_top_symbols: int = 10
-    max_shard_mb: int = 2
+    max_shard_mb: int = 10
 
     # New caps for Kotlin/Gradle/Kafka Streams (profile-tuned if None)
     max_kotlin_files: Optional[int] = None
@@ -89,9 +89,9 @@ class Config:
     sqlite_suffixes: Tuple[str, ...] = (".db", ".sqlite")
 
     # New suffix buckets
-    # NOTE: .kts is ambiguous (Gradle build scripts vs Kotlin scripts).
-    # We treat Gradle build scripts via explicit filenames / *.gradle.kts checks.
     kotlin_suffixes: Tuple[str, ...] = (".kt", ".kts")
+    go_suffixes: Tuple[str, ...] = (".go",)
+    rust_suffixes: Tuple[str, ...] = (".rs",)
 
     config_suffixes: Tuple[str, ...] = (".properties", ".yaml", ".yml", ".json")
 
@@ -223,6 +223,12 @@ class Config:
         if self.is_gradle_file(path):
             return False
         return True
+
+    def is_go_file(self, path: Path) -> bool:
+        return path.suffix.lower() in self.go_suffixes
+
+    def is_rust_file(self, path: Path) -> bool:
+        return path.suffix.lower() in self.rust_suffixes
 
     def is_config_file(self, path: Path) -> bool:
         return path.suffix.lower() in self.config_suffixes
