@@ -78,6 +78,98 @@ class QueryEngine:
             result[pid] = self.paths_cache.get(pid, "unknown")
         return result
 
+    def get_pid_for_path(self, target_path: str) -> Optional[int]:
+        if not self.paths_cache:
+            try:
+                self.paths_cache = self.read_json_shard("paths.json")
+            except RuntimeError:
+                self.paths_cache = {}
+
+        # Try exact match first
+        for pid, path in self.paths_cache.items():
+            if path == target_path:
+                return int(pid)
+        
+        # Fallback to suffix match (e.g. src/core/main.py matches /abs/path/to/src/core/main.py)
+        for pid, path in self.paths_cache.items():
+            if path.endswith(target_path):
+                return int(pid)
+        return None
+
+    def _get_shard_key(self, target_path: str) -> str:
+        # Simplistic version of orchestrator._top_level_pkg
+        # Assumes target_path is relative to project_root if it's in the map
+        parts = Path(target_path).parts
+        if not parts:
+            return "__root__"
+        # If it's an absolute path, try to make it relative to project_root
+        try:
+            rel = Path(target_path).relative_to(self.project_root)
+            parts = rel.parts
+        except ValueError:
+            pass
+            
+        if len(parts) <= 1:
+            return "__root__"
+        return parts[0]
+
+    def get_file_outline(self, pid: int, target_path: str) -> Dict[str, Any]:
+        shard_key = self._get_shard_key(target_path)
+        try:
+            shard_data = self.read_json_shard(f"files_index/{shard_key}.min.json")
+            files = shard_data.get("files", [])
+            for f in files:
+                if f.get("p") == pid:
+                    return f
+        except RuntimeError:
+            pass
+        return {}
+
+    def get_shallow_dependencies(self, pid: int, target_path: str) -> Dict[str, List[Dict[str, Any]]]:
+        result = {"inbound": [], "outbound": []}
+        
+        # 1. Resolve module name for import matching
+        try:
+            p = Path(target_path)
+            # Try to resolve relative to project_root if it's absolute
+            if p.is_absolute():
+                try:
+                    rel_p = p.relative_to(Path(self.project_root).resolve())
+                except ValueError:
+                    rel_p = p
+            else:
+                rel_p = p
+            
+            # Remove extension
+            mod_path = rel_p.with_suffix("")
+            target_mod = ".".join(mod_path.parts)
+        except Exception:
+            target_mod = ""
+
+        # 2. Check Python imports (analyzers.repo_only.json)
+        try:
+            imports_data = self.read_json_shard("analyzers.repo_only.json")
+            edges = imports_data.get("edges", [])
+            
+            pids_to_resolve = set()
+            for edge in edges:
+                if edge.get("dst") == target_mod or edge.get("dst").startswith(target_mod + "."):
+                    result["inbound"].append(edge)
+                    pids_to_resolve.add(str(edge["pid"]))
+                if edge.get("src") == target_mod or edge.get("pid") == pid:
+                    result["outbound"].append(edge)
+                    # For outbound, we don't have the dst PID directly in this shard, 
+                    # usually it's just the module name.
+            
+            path_map = self.resolve_pids(list(pids_to_resolve))
+            for edge in result["inbound"]:
+                edge["path"] = path_map.get(str(edge["pid"]), "unknown")
+                
+        except RuntimeError:
+            pass
+
+        return result
+
     def search_symbols(self, query: str) -> List[Dict[str, Any]]:
         nav_keys = ["kotlin_symbols", "python_symbols", "typescript_symbols", "go_symbols", "rust_symbols"]
         all_matches = []

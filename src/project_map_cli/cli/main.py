@@ -32,6 +32,69 @@ def find(query: str):
             click.echo(f"\nNext Step: Run `project-map impact --fqn {first_qname}` to analyze its impact.")
 
 @cli.command()
+@click.option('--path', required=True, help="Path to the file to inspect")
+def context(path: str):
+    """Get a dense contextual overview of a specific file."""
+    engine = QueryEngine()
+    try:
+        pid = engine.get_pid_for_path(path)
+        if pid is None:
+            click.echo(f"Resource: FileContext | Path: {path}")
+            click.echo("Status: Not found in project map index.")
+            return
+
+        outline = engine.get_file_outline(pid, path)
+        deps = engine.get_shallow_dependencies(pid, path)
+        
+        click.echo(f"Resource: FileContext | Path: {path} | pid: {pid} | LOC: {outline.get('l', 'unknown')}")
+        
+        # Outline
+        click.echo("\n--- File Outline ---")
+        classes = outline.get("c", [])
+        for c in classes:
+            click.echo(f"- class {c['name']} (ln: {c['ln']})")
+        
+        functions = outline.get("f", [])
+        for f in functions:
+            click.echo(f"- function {f['name']} (ln: {f['ln']})")
+        
+        if not classes and not functions:
+            click.echo("- (No classes or functions detected)")
+
+        # Impact
+        click.echo("\n--- External Impact ---")
+        inbound = deps.get("inbound", [])
+        if inbound:
+            click.echo(f"Inbound Dependencies (Who imports this):")
+            # Deduplicate by path
+            all_inbound_paths = sorted(list({edge.get("path", "unknown") for edge in inbound}))
+            for p in all_inbound_paths[:5]:
+                # Find the first edge with this path to get line number
+                edge = next(e for e in inbound if e.get("path") == p)
+                click.echo(f"- {p} (ln: {edge.get('ln')})")
+            
+            if len(all_inbound_paths) > 5:
+                click.echo(f"... and {len(all_inbound_paths) - 5} more.")
+        else:
+            click.echo("Inbound Dependencies: [None detected]")
+
+        outbound = deps.get("outbound", [])
+        if outbound:
+            click.echo(f"\nOutbound Dependencies (What this file imports):")
+            # Deduplicate by dst (module name)
+            all_outbound_mods = sorted(list({edge.get("dst", "unknown") for edge in outbound}))
+            for m in all_outbound_mods[:5]:
+                click.echo(f"- {m}")
+            
+            if len(all_outbound_mods) > 5:
+                click.echo(f"... and {len(all_outbound_mods) - 5} more.")
+        else:
+            click.echo("\nOutbound Dependencies: [None detected]")
+
+    except Exception as e:
+        click.echo(f"Error: {e}")
+
+@cli.command()
 @click.option('--fqn', required=True, help="Fully Qualified Name of the symbol")
 def impact(fqn: str):
     """Analyze the architectural impact of a symbol."""

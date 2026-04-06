@@ -63,6 +63,14 @@ Finds a symbol (class, function, etc.) across the codebase. Works across Python,
 *   **Mandatory Arguments:**
     *   `--query`: The symbol name or part of the Fully Qualified Name (FQN) to search for.
 
+### `project-map context`
+Provides a dense, contextual overview of a specific file, including its AST outline and shallow dependency edges.
+
+*   **Syntax:** `project-map context --path <file_path>`
+*   **Mandatory Arguments:**
+    *   `--path`: The relative path to the file to inspect.
+*   **Output:** Includes the file's Line of Code (LOC) count, a "Table of Contents" of classes and functions with line numbers, and lists of inbound/outbound dependencies.
+
 ### `project-map impact`
 Analyzes the architectural impact of modifying a specific symbol.
 

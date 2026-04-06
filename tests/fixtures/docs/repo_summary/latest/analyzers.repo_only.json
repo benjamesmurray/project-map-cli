@@ -1,0 +1,16 @@
+{
+  "edges": [
+    {"src": "src.main.kotlin.com.example.UserController", "dst": "src.main.kotlin.com.example.UserService", "pid": 2, "ln": 10},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.UserRepository", "pid": 1, "ln": 15},
+    {"src": "src.main.kotlin.com.example.Extra1", "dst": "src.main.kotlin.com.example.UserService", "pid": 11, "ln": 1},
+    {"src": "src.main.kotlin.com.example.Extra2", "dst": "src.main.kotlin.com.example.UserService", "pid": 12, "ln": 1},
+    {"src": "src.main.kotlin.com.example.Extra3", "dst": "src.main.kotlin.com.example.UserService", "pid": 13, "ln": 1},
+    {"src": "src.main.kotlin.com.example.Extra4", "dst": "src.main.kotlin.com.example.UserService", "pid": 14, "ln": 1},
+    {"src": "src.main.kotlin.com.example.Extra5", "dst": "src.main.kotlin.com.example.UserService", "pid": 15, "ln": 1},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.Dep1", "pid": 1, "ln": 10},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.Dep2", "pid": 1, "ln": 11},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.Dep3", "pid": 1, "ln": 12},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.Dep4", "pid": 1, "ln": 13},
+    {"src": "src.main.kotlin.com.example.UserService", "dst": "src.main.kotlin.com.example.Dep5", "pid": 1, "ln": 14}
+  ]
+}
