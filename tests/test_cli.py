@@ -17,7 +17,7 @@ def test_find_command():
     assert "Resource: Symbols | Query: UserService" in result.output
     assert "Matches Found: 1" in result.output
     assert "- [pid: 1] src/main/kotlin/com/example/UserService.kt (com.example.UserService)" in result.output
-    assert "Next Step: Run `sc_exec impact" in result.output
+    assert "Next Step: Run `project-map impact" in result.output
 
 def test_impact_command():
     runner = CliRunner()
@@ -25,4 +25,11 @@ def test_impact_command():
     assert result.exit_code == 0
     assert "Resource: Impact Analysis | Target: com.example.UserRepository" in result.output
     assert "Nodes Impacted: 3" in result.output
-    assert "Next Step: Run `sc_exec status` for workspace overview." in result.output
+    assert "Next Step: Run `project-map status` for workspace overview." in result.output
+
+def test_status_command():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["status"])
+    assert result.exit_code == 0
+    assert "Workspace: project-map-cli" in result.output
+    assert "Available Commands: find, impact, status" in result.output

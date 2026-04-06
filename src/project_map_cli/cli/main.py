@@ -29,7 +29,7 @@ def find(query: str):
     if matches:
         first_qname = matches[0].get('qname') or matches[0].get('name')
         if first_qname:
-            click.echo(f"\nNext Step: Run `sc_exec impact --fqn {first_qname}` to analyze its impact.")
+            click.echo(f"\nNext Step: Run `project-map impact --fqn {first_qname}` to analyze its impact.")
 
 @cli.command()
 @click.option('--fqn', required=True, help="Fully Qualified Name of the symbol")
@@ -48,7 +48,15 @@ def impact(fqn: str):
     if result['reached_cap']:
         click.echo("Warning: Fanout cap reached. Impact may be larger.")
     
-    click.echo(f"\nNext Step: Run `sc_exec status` for workspace overview.")
+    click.echo(f"\nNext Step: Run `project-map status` for workspace overview.")
+
+@cli.command()
+def status():
+    """Returns current workspace context and available commands."""
+    click.echo("Workspace: project-map-cli")
+    click.echo("Phase: Discovery")
+    click.echo("Available Commands: find, impact, status")
+    click.echo("\nNext Step: Run `project-map find --query <symbol>` to explore.")
 
 if __name__ == '__main__':
     cli()

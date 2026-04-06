@@ -76,7 +76,7 @@ async def handle_call_tool(
         status_text = (
             "Workspace: project-map-cli\n"
             "Phase: Discovery\n"
-            "Available CLI Commands: find, impact\n\n"
+            "Available CLI Commands: find, impact, status\n\n"
             "Next Step: Run `sc_help --topic find` or execute a query with `sc_exec --command 'find --query User'`."
         )
         return [TextContent(type="text", text=status_text)]
@@ -109,7 +109,7 @@ async def handle_call_tool(
     else:
         raise ValueError(f"Unknown tool: {name}")
 
-async def main():
+async def run_server():
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
@@ -117,6 +117,9 @@ async def main():
             server.create_initialization_options()
         )
 
-if __name__ == "__main__":
+def main():
     import asyncio
-    asyncio.run(main())
+    asyncio.run(run_server())
+
+if __name__ == "__main__":
+    main()
