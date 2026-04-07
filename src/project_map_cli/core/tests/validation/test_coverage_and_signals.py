@@ -21,6 +21,10 @@ def run_tool(root: Path, out_dir: Path) -> SignalAssertions:
         proc.check_returncode()
     
     loader = ShardLoader(out_dir)
+    metadata = loader.get_shard("metadata.json")
+    if metadata and metadata.get("status") == "partial":
+        print("DEBUG: Analyzer Errors:", metadata.get("errors"))
+
     routes = loader.get_shard("api.routes.json")
     if not routes or not routes.get("routes"):
         print("DEBUG: paths.json:", (out_dir / "paths.json").read_text())

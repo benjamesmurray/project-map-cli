@@ -52,5 +52,15 @@ def test_determinism(tmp_path):
             del j1["run_id"]
             del j2["run_id"]
             assert j1 == j2
+        elif rel.name == "metadata.json":
+            import json
+            j1 = json.loads(p1.read_text())
+            j2 = json.loads(p2.read_text())
+            # Remove non-deterministic timestamps and timing metrics
+            j1.pop("generated_at", None)
+            j2.pop("generated_at", None)
+            j1.pop("duration_sec", None)
+            j2.pop("duration_sec", None)
+            assert j1 == j2
         else:
             assert p1.read_bytes() == p2.read_bytes(), f"Determinism failure in {rel}"

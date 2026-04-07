@@ -346,6 +346,8 @@ def run(cfg: Config) -> None:
     for lang_name, analyzer_func, files, out_fn in symbol_analyzers:
         doc = safe_analyze(f"{lang_name}_symbols", analyzer_func, cfg, files, pid_by_path)
         if doc:
+            if doc.get("errors"):
+                errors.extend([{"analyzer": f"{lang_name}_symbols", "error": str(e)} for e in doc["errors"]])
             filenames[out_fn] = write.write_json_sharded(
                 final_out / out_fn, doc, "symbols", max_bytes=cfg.max_shard_bytes
             )
@@ -362,6 +364,8 @@ def run(cfg: Config) -> None:
     # Kotlin symbols
     kotlin_symbols_doc = safe_analyze("kotlin_symbols", kotlin_symbols.analyze, cfg, kt_files_for_symbols, pid_by_path)
     if kotlin_symbols_doc:
+        if kotlin_symbols_doc.get("errors"):
+            errors.extend([{"analyzer": "kotlin_symbols", "error": str(e)} for e in kotlin_symbols_doc["errors"]])
         filenames["kotlin.symbols.json"] = write.write_json_sharded(
             final_out / "kotlin.symbols.json", kotlin_symbols_doc, "symbols", max_bytes=cfg.max_shard_bytes
         )

@@ -12,7 +12,9 @@ dependencies = [
     "pytest",
     "networkx>=3.0",
     "mcp>=1.0.0",
-    "click>=8.0.0"
+    "click>=8.0.0",
+    "tree-sitter>=0.21.0",
+    "tree-sitter-language-pack>=0.3.0"
 ]
 
 [project.scripts]
