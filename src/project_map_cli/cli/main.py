@@ -1,5 +1,9 @@
+import os
 import click
 from project_map_cli.core.query_engine import QueryEngine
+
+def is_mcp_mode() -> bool:
+    return os.environ.get("MCP_MODE") == "1"
 
 @click.group()
 def cli():
@@ -29,7 +33,10 @@ def find(query: str):
     if matches:
         first_qname = matches[0].get('qname') or matches[0].get('name')
         if first_qname:
-            click.echo(f"\nNext Step: Run `project-map impact --fqn {first_qname}` to analyze its impact.")
+            if is_mcp_mode():
+                click.echo(f"\nNext Step: Use the `pm_plan` tool with fqn: '{first_qname}' to analyze its impact.")
+            else:
+                click.echo(f"\nNext Step: Run `project-map impact --fqn {first_qname}` to analyze its impact.")
 
 @cli.command()
 @click.option('--path', required=True, help="Path to the file to inspect")
@@ -111,7 +118,10 @@ def impact(fqn: str):
     if result['reached_cap']:
         click.echo("Warning: Fanout cap reached. Impact may be larger.")
     
-    click.echo(f"\nNext Step: Run `project-map status` for workspace overview.")
+    if is_mcp_mode():
+        click.echo(f"\nNext Step: Use the `pm_status` tool for a workspace overview.")
+    else:
+        click.echo(f"\nNext Step: Run `project-map status` for workspace overview.")
 
 @cli.command(
     add_help_option=False,
@@ -162,8 +172,12 @@ def status():
     except Exception:
         click.echo("Phase: Discovery (No index found)")
 
-    click.echo("Available Commands: build, refresh, find, impact, status")
-    click.echo("\nNext Step: Run `project-map find --query <symbol>` to explore.")
+    if is_mcp_mode():
+        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status")
+        click.echo("\nNext Step: Use the `pm_query` tool with a 'query' to explore.")
+    else:
+        click.echo("Available Commands: build, refresh, find, impact, status")
+        click.echo("\nNext Step: Run `project-map find --query <symbol>` to explore.")
 
 if __name__ == '__main__':
     cli()

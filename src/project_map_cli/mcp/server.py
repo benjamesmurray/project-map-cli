@@ -17,47 +17,78 @@ server = Server("project-map-cli")
 @server.list_tools()
 async def handle_list_tools() -> list[Tool]:
     """
-    List available tools. We only expose the 4 "Agent-Native" tools.
+    List available tools. We use the 'pm_' prefix for project-map-cli.
     """
     return [
         Tool(
-            name="sc_status",
-            description="Returns current workspace context, last active project, and available commands.",
+            name="pm_status",
+            description="Returns current workspace context, last generation time, and available commands.",
             inputSchema={
                 "type": "object",
                 "properties": {}
             }
         ),
         Tool(
-            name="sc_help",
-            description="Accepts a topic/command (e.g., 'find') and returns the detailed help text.",
+            name="pm_help",
+            description="Returns detailed help text for a specific command or topic.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "topic": {
                         "type": "string",
-                        "description": "The CLI topic or command to get help for (e.g., 'find', 'impact')"
+                        "description": "The command or topic to get help for (e.g., 'find', 'impact', 'context')"
                     }
                 }
             }
         ),
         Tool(
-            name="sc_exec",
-            description="The primary workhorse tool. Accepts a CLI string (e.g., 'find --query User').",
+            name="pm_init",
+            description="Initializes or refreshes the project map index. Use this after significant code changes.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "command": {
+                    "profile": {
                         "type": "string",
-                        "description": "The command string to execute (e.g., 'find --query User')"
+                        "enum": ["full", "light"],
+                        "description": "The scan profile (full = deep analysis, light = fast scan). Defaults to full."
                     }
-                },
-                "required": ["command"]
+                }
             }
         ),
         Tool(
-            name="sc_verify",
-            description="Analyzes the last command's output or checks workspace state.",
+            name="pm_query",
+            description="Search for symbols or get file context. Provide 'query' for symbol search or 'path' for file context.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Symbol name to search for across the codebase."
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Relative file path to get dense architectural context for."
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="pm_plan",
+            description="Analyzes the architectural impact of a symbol. Useful for planning refactors or changes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "fqn": {
+                        "type": "string",
+                        "description": "Fully Qualified Name (FQN) of the symbol to analyze."
+                    }
+                },
+                "required": ["fqn"]
+            }
+        ),
+        Tool(
+            name="pm_verify",
+            description="Checks the health of the project map system and recent indexing status.",
             inputSchema={
                 "type": "object",
                 "properties": {}
@@ -72,35 +103,80 @@ async def handle_call_tool(
     """
     Handle tool execution requests.
     """
-    if name == "sc_status":
-        runner = CliRunner()
+    os.environ["MCP_MODE"] = "1"
+    runner = CliRunner()
+    
+    if name == "pm_status":
         result = runner.invoke(main_cli, ["status"])
         return [TextContent(type="text", text=result.output)]
 
-    elif name == "sc_help":
-        topic = arguments.get("topic", "")
-        runner = CliRunner()
-        args = [topic, "--help"] if topic else ["--help"]
-        result = runner.invoke(main_cli, args)
-        return [TextContent(type="text", text=result.output)]
+    elif name == "pm_help":
+        help_text = """
+Project Map CLI - MCP Tools Help
 
-    elif name == "sc_exec":
-        command_str = arguments.get("command", "")
-        if not command_str:
-            return [TextContent(type="text", text="Error: command argument is required.")]
-        
-        args = shlex.split(command_str)
-        runner = CliRunner()
-        result = runner.invoke(main_cli, args)
-        
+You have access to the following 'pm_' native tools. Use these tools by providing the specific JSON parameters, rather than passing raw CLI commands.
+
+* pm_status
+  Checks the current workspace context and indexing status.
+  Usage: Call with no arguments.
+
+* pm_init
+  Initializes or refreshes the project map index. Use this after significant code changes.
+  Usage: Call with {"profile": "full"} or {"profile": "light"}.
+
+* pm_query
+  Search for a symbol across the codebase or get architectural context for a specific file.
+  Usage (symbol search): Call with {"query": "MyClassName"}
+  Usage (file context): Call with {"path": "src/main.py"}
+
+* pm_plan
+  Analyze the architectural impact and dependencies of a fully qualified symbol.
+  Usage: Call with {"fqn": "com.example.MyClassName"}
+
+* pm_verify
+  Checks if the project map index exists and the system is healthy.
+  Usage: Call with no arguments.
+"""
+        return [TextContent(type="text", text=help_text.strip())]
+
+    elif name == "pm_init":
+        profile = arguments.get("profile", "full")
+        result = runner.invoke(main_cli, ["build", "--profile", profile])
         output = result.output
         if result.exception:
             output += f"\nException: {result.exception}\n{traceback.format_exc()}"
-            
         return [TextContent(type="text", text=output)]
 
-    elif name == "sc_verify":
-        return [TextContent(type="text", text="Verification: System is operational. No recent actions to verify in state.")]
+    elif name == "pm_query":
+        query = arguments.get("query")
+        path = arguments.get("path")
+        
+        if query:
+            result = runner.invoke(main_cli, ["find", "--query", query])
+        elif path:
+            result = runner.invoke(main_cli, ["context", "--path", path])
+        else:
+            return [TextContent(type="text", text="Error: Either 'query' or 'path' must be provided to pm_query.")]
+            
+        output = result.output
+        if result.exception:
+            output += f"\nException: {result.exception}\n{traceback.format_exc()}"
+        return [TextContent(type="text", text=output)]
+
+    elif name == "pm_plan":
+        fqn = arguments.get("fqn", "")
+        result = runner.invoke(main_cli, ["impact", "--fqn", fqn])
+        output = result.output
+        if result.exception:
+            output += f"\nException: {result.exception}\n{traceback.format_exc()}"
+        return [TextContent(type="text", text=output)]
+
+    elif name == "pm_verify":
+        # We can implement a more robust verify by checking if the index files exist
+        result = runner.invoke(main_cli, ["status"])
+        if "Discovery (No index found)" in result.output:
+            return [TextContent(type="text", text="Status: Index missing. Run pm_init to generate the project map.")]
+        return [TextContent(type="text", text="Status: System healthy. Index is present and accessible.")]
 
     else:
         raise ValueError(f"Unknown tool: {name}")

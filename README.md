@@ -35,61 +35,65 @@ Follow these steps to add `project-map-cli` to your local environment.
 - Python 3.10 or higher
 - tree-sitter-language-pack (included in dependencies)
 
+## MCP Server Documentation
+
+The `project-map-cli` MCP server exposes several semantic tools designed for agent use. These tools use the **`pm_`** prefix to avoid conflicts with other "Spec CLI" style servers.
+
+### `pm_init`
+Initializes or refreshes the repository digest (the "Project Map").
+
+*   **Arguments:**
+    *   `profile`: `full` (default) or `light` (faster, skips some detail).
+
+### `pm_status`
+Returns the current workspace context and indexing health.
+
+### `pm_query`
+Finds a symbol or gets dense file context.
+
+*   **Arguments (provide one):**
+    *   `query`: The symbol name or part of the Fully Qualified Name (FQN) to search for.
+    *   `path`: The relative path to a file to inspect for AST outline and dependencies.
+
+### `pm_plan`
+Analyzes the architectural impact of modifying a specific symbol.
+
+*   **Arguments:**
+    *   `fqn`: The exact Fully Qualified Name of the target symbol.
+
+### `pm_help` / `pm_verify`
+Provides usage guidance and system health verification.
+
+---
+
 ## Command-Line Interface (CLI) Documentation
 
-The `project-map` command provides several subcommands for repository exploration and indexing.
+For manual use, the `project-map` command provides several subcommands.
 
 ### `project-map build` / `project-map refresh`
-Generates or updates the repository digest (the "Project Map").
-
 *   **Syntax:** `project-map build --root <path> --out-dir <path>`
 *   **Mandatory Arguments:**
     *   `--root`: The path to the repository root to analyze.
     *   `--out-dir`: The directory to contain the output.
 *   **Key Options:**
-    *   `--max-shard-mb`: Size cap per JSON shard (default: 10MB). Oversized shards are automatically split into `.partN.json` files.
-    *   `--profile`: `full` (default) or `light` (faster, skips some detail).
+    *   `--max-shard-mb`: Size cap per JSON shard (default: 10MB).
+    *   `--profile`: `full` (default) or `light`.
 
 ### `project-map status`
-Returns the current workspace context and indexing health.
-
-*   **Syntax:** `project-map status`
-*   **Output:** Reports the last generation timestamp, indexing status (`Success` or `Partial`), and any analyzer errors recorded in `metadata.json`.
+Reports the last generation timestamp and indexing status.
 
 ### `project-map find`
-Finds a symbol (class, function, etc.) across the codebase. Works across Python, TypeScript/JS, Kotlin, Go, and Rust.
-
 *   **Syntax:** `project-map find --query <search_string>`
-*   **Mandatory Arguments:**
-    *   `--query`: The symbol name or part of the Fully Qualified Name (FQN) to search for.
 
 ### `project-map context`
-Provides a dense, contextual overview of a specific file, including its AST outline and shallow dependency edges.
-
 *   **Syntax:** `project-map context --path <file_path>`
-*   **Mandatory Arguments:**
-    *   `--path`: The relative path to the file to inspect.
-*   **Output:** Includes the file's Line of Code (LOC) count, a "Table of Contents" of classes and functions with line numbers, and lists of inbound/outbound dependencies.
 
 ### `project-map impact`
-Analyzes the architectural impact of modifying a specific symbol.
-
 *   **Syntax:** `project-map impact --fqn <fully_qualified_name>`
-*   **Mandatory Arguments:**
-    *   `--fqn`: The exact Fully Qualified Name of the target symbol.
 
 ## Input/Output Specifications
 
-### Data Formats (Input)
-The tool expects a structured repository digest at `.project-map/docs/repo_summary/latest` (configurable via `PROJECT_ROOT` environment variable). This digest consists of:
-*   `nav.json`: The root index mapping keys to shard filenames (handles sharded lists).
-*   `metadata.json`: Run info, capabilities, and the global symbol index (GSI).
-*   `paths.json`: Map of project IDs (PIDs) to relative file paths.
-*   `*.symbols.json`: Shards containing symbol definitions.
-*   `edges_*.json`: Dependency graph shards mapping call relationships.
-
 ### Supported Languages
-Deep, AST-level support provided for:
 - **Python**: Symbols, Pydantic models, FastAPI routes.
 - **TypeScript / JavaScript / Vue**: Symbols and axios call detection.
 - **Kotlin / JVM**: Symbols, call graphs, Kafka Streams EDA.
@@ -97,16 +101,13 @@ Deep, AST-level support provided for:
 - **Rust**: Structs, enums, functions, traits, modules, and impls.
 - **SQL**: Database schema extraction.
 
-### Console Output (Output)
-`project-map-cli` uses **Token-Oriented Object Notation (TOON)** for its console output. TOON is a dense, Markdown-formatted text format designed to be highly readable for LLMs while minimizing token consumption.
-
-*   **Headers:** Resource type and query parameters.
-*   **Breadcrumbs:** `Next Step:` blocks that guide the agent's reasoning loop.
-*   **Density:** Key-value pairs are often condensed to reduce vertical space.
+### Console Output (TOON)
+`project-map-cli` uses **Token-Oriented Object Notation (TOON)**. TOON is a dense, Markdown-formatted text format designed to be highly readable for LLMs while minimizing token consumption.
 
 ## Technical Code Samples
 
-### CLI Output Example (TOON)
+### MCP Output Example (TOON)
+When running in an MCP context, the tool provides specific guidance for the agent:
 ```text
 Resource: Symbols | Query: UserService
 Matches Found: 3
@@ -114,21 +115,7 @@ Matches Found: 3
 - [pid: 4] src/main/kotlin/com/example/InternalUserService.kt (com.example.InternalUserService)
 - [pid: 9] src/main/kotlin/com/example/UserModule.kt (com.example.UserModule)
 
-Next Step: Run `project-map impact --fqn com.example.UserService` to analyze its impact.
-```
-
-### JSON Shard Example (Internal Format)
-```json
-{
-  "symbols": [
-    {
-      "pid": 1,
-      "name": "UserService",
-      "qname": "com.example.UserService",
-      "kind": "class"
-    }
-  ]
-}
+Next Step: Use the `pm_plan` tool with fqn: 'com.example.UserService' to analyze its impact.
 ```
 
 ### MCP Server Registration
@@ -137,27 +124,7 @@ To register the tool with Gemini CLI:
 gemini mcp add project-map-cli command "/path/to/project-map-cli/venv/bin/python" "-m" "project_map_cli.mcp.server"
 ```
 
-## Development and Contribution Guidelines
-
-We welcome contributions! Follow these steps to set up your development environment.
-
-1.  **Clone and Install:** (See Installation Procedures)
-2.  **Install Test Dependencies:**
-    ```bash
-    pip install pytest
-    ```
-3.  **Running Tests:**
-    *   **Unit Tests:** `pytest tests/` (uses mocked data in `tests/fixtures/`).
-4.  **Code Style:** Adhere to existing patterns in `src/project_map_cli/core/analyzers/` for adding new language support.
-
 ## Legal Information
 
 This software is distributed under the **MIT License**.
-
 Copyright (c) 2026 Ben Murray
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
