@@ -5,15 +5,36 @@ from project_map_cli.core.query_engine import QueryEngine
 def is_mcp_mode() -> bool:
     return os.environ.get("MCP_MODE") == "1"
 
-@click.group()
+@click.group(context_settings=dict(help_option_names=['-h', '--help']))
 def cli():
     """Agent-Native architectural awareness CLI."""
     pass
 
 @cli.command()
-@click.option('--query', required=True, help="Symbol to search for")
+@click.argument('topic', required=False)
+@click.pass_context
+def help(ctx, topic):
+    """Show help for a command."""
+    if not topic:
+        click.echo(ctx.parent.get_help())
+        return
+    
+    cmd = cli.get_command(ctx, topic)
+    if cmd:
+        click.echo(cmd.get_help(ctx))
+    else:
+        click.echo(f"Unknown help topic {topic!r}")
+        ctx.exit(1)
+
+@cli.command()
+@click.option('--query', '-q', required=True, help="Symbol to search for")
 def find(query: str):
-    """Find a symbol across the codebase."""
+    """Find a symbol across the codebase.
+    
+    Examples:
+      project-map find -q MyClassName
+      project-map find --query "process_data"
+    """
     engine = QueryEngine()
     try:
         matches = engine.search_symbols(query)
@@ -36,12 +57,17 @@ def find(query: str):
             if is_mcp_mode():
                 click.echo(f"\nNext Step: Use the `pm_plan` tool with fqn: '{first_qname}' to analyze its impact.")
             else:
-                click.echo(f"\nNext Step: Run `project-map impact --fqn {first_qname}` to analyze its impact.")
+                click.echo(f"\nNext Step: Run `project-map impact -f {first_qname}` to analyze its impact.")
 
 @cli.command()
-@click.option('--path', required=True, help="Path to the file to inspect")
+@click.option('--path', '-p', required=True, help="Path to the file to inspect")
 def context(path: str):
-    """Get a dense contextual overview of a specific file."""
+    """Get a dense architectural overview of a specific file.
+    
+    Examples:
+      project-map context -p src/main.py
+      project-map context --path "packages/core/index.ts"
+    """
     engine = QueryEngine()
     try:
         pid = engine.get_pid_for_path(path)
@@ -102,9 +128,14 @@ def context(path: str):
         click.echo(f"Error: {e}")
 
 @cli.command()
-@click.option('--fqn', required=True, help="Fully Qualified Name of the symbol")
+@click.option('--fqn', '-f', required=True, help="Fully Qualified Name of the symbol")
 def impact(fqn: str):
-    """Analyze the architectural impact of a symbol."""
+    """Analyze the architectural impact of a symbol.
+    
+    Examples:
+      project-map impact -f com.example.MyClass
+      project-map impact --fqn "src.utils.process_data"
+    """
     engine = QueryEngine()
     try:
         result = engine.analyze_impact(fqn)
@@ -173,10 +204,10 @@ def status():
         click.echo("Phase: Discovery (No index found)")
 
     if is_mcp_mode():
-        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status")
+        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
         click.echo("\nNext Step: Use the `pm_query` tool with a 'query' to explore.")
     else:
-        click.echo("Available Commands: build, refresh, find, impact, status")
+        click.echo("Available Commands: build, refresh, find, context, impact, status")
         click.echo("\nNext Step: Run `project-map find --query <symbol>` to explore.")
 
 if __name__ == '__main__':

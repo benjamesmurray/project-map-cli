@@ -111,32 +111,49 @@ async def handle_call_tool(
         return [TextContent(type="text", text=result.output)]
 
     elif name == "pm_help":
-        help_text = """
-Project Map CLI - MCP Tools Help
-
-You have access to the following 'pm_' native tools. Use these tools by providing the specific JSON parameters, rather than passing raw CLI commands.
-
-* pm_status
-  Checks the current workspace context and indexing status.
-  Usage: Call with no arguments.
-
-* pm_init
-  Initializes or refreshes the project map index. Use this after significant code changes.
-  Usage: Call with {"profile": "full"} or {"profile": "light"}.
-
-* pm_query
-  Search for a symbol across the codebase or get architectural context for a specific file.
-  Usage (symbol search): Call with {"query": "MyClassName"}
-  Usage (file context): Call with {"path": "src/main.py"}
-
-* pm_plan
-  Analyze the architectural impact and dependencies of a fully qualified symbol.
-  Usage: Call with {"fqn": "com.example.MyClassName"}
-
-* pm_verify
-  Checks if the project map index exists and the system is healthy.
-  Usage: Call with no arguments.
-"""
+        topic = (arguments or {}).get("topic", "").lower()
+        
+        # Tools documentation
+        tools_docs = {
+            "pm_status": {
+                "desc": "Checks the current workspace context and indexing status.",
+                "usage": "Call with no arguments."
+            },
+            "pm_init": {
+                "desc": "Initializes or refreshes the project map index. Use this after significant code changes.",
+                "usage": 'Call with {"profile": "full"} or {"profile": "light"}.'
+            },
+            "pm_query": {
+                "desc": "Search for a symbol across the codebase or get architectural context for a specific file.",
+                "usage": 'Usage (symbol search): Call with {"query": "MyClassName"}\n  Usage (file context): Call with {"path": "src/main.py"}'
+            },
+            "pm_plan": {
+                "desc": "Analyze the architectural impact and dependencies of a fully qualified symbol.",
+                "usage": 'Usage: Call with {"fqn": "com.example.MyClassName"}'
+            },
+            "pm_verify": {
+                "desc": "Checks if the project map index exists and the system is healthy.",
+                "usage": "Call with no arguments."
+            },
+            "pm_help": {
+                "desc": "Returns detailed help text for a specific command or topic.",
+                "usage": 'Call with no arguments or {"topic": "pm_query"}.'
+            }
+        }
+        
+        # Build help text
+        if topic and topic in tools_docs:
+            doc = tools_docs[topic]
+            help_text = f"Help for {topic}:\n{doc['desc']}\n  Usage: {doc['usage']}"
+        elif topic and f"pm_{topic}" in tools_docs:
+            doc = tools_docs[f"pm_{topic}"]
+            help_text = f"Help for pm_{topic}:\n{doc['desc']}\n  Usage: {doc['usage']}"
+        else:
+            help_text = "Project Map CLI - MCP Tools Help\n\n"
+            help_text += "You have access to the following 'pm_' native tools. Use these tools by providing the specific JSON parameters, rather than passing raw CLI commands.\n\n"
+            for t_name, t_info in tools_docs.items():
+                help_text += f"* {t_name}\n  {t_info['desc']}\n  Usage: {t_info['usage']}\n\n"
+        
         return [TextContent(type="text", text=help_text.strip())]
 
     elif name == "pm_init":

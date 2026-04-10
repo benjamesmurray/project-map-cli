@@ -68,13 +68,18 @@ Provides usage guidance and system health verification.
 
 ## Command-Line Interface (CLI) Documentation
 
-For manual use, the `project-map` command provides several subcommands.
+The `project-map` CLI follows standard Cobra-style conventions, providing first-class `help` support and flag shorthands.
+
+### `project-map help`
+Shows general help or help for a specific command.
+*   **Syntax:** `project-map help [command]`
+*   **Example:** `project-map help find`
 
 ### `project-map build` / `project-map refresh`
-*   **Syntax:** `project-map build --root <path> --out-dir <path>`
+*   **Syntax:** `project-map build -r <root_path> -o <out_dir>`
 *   **Mandatory Arguments:**
-    *   `--root`: The path to the repository root to analyze.
-    *   `--out-dir`: The directory to contain the output.
+    *   `-r`, `--root`: The path to the repository root to analyze.
+    *   `-o`, `--out-dir`: The directory to contain the output.
 *   **Key Options:**
     *   `--max-shard-mb`: Size cap per JSON shard (default: 10MB).
     *   `--profile`: `full` (default) or `light`.
@@ -83,13 +88,16 @@ For manual use, the `project-map` command provides several subcommands.
 Reports the last generation timestamp and indexing status.
 
 ### `project-map find`
-*   **Syntax:** `project-map find --query <search_string>`
+*   **Syntax:** `project-map find -q <search_string>`
+*   **Example:** `project-map find -q MyClassName`
 
 ### `project-map context`
-*   **Syntax:** `project-map context --path <file_path>`
+*   **Syntax:** `project-map context -p <file_path>`
+*   **Example:** `project-map context -p src/main.py`
 
 ### `project-map impact`
-*   **Syntax:** `project-map impact --fqn <fully_qualified_name>`
+*   **Syntax:** `project-map impact -f <fully_qualified_name>`
+*   **Example:** `project-map impact -f com.example.MyClass`
 
 ## Input/Output Specifications
 

@@ -33,4 +33,4 @@ def test_status_command():
     result = runner.invoke(cli, ["status"])
     assert result.exit_code == 0
     assert "Workspace: project-map-cli" in result.output
-    assert "Available Commands: build, refresh, find, impact, status" in result.output
+    assert "Available Commands: build, refresh, find, context, impact, status" in result.output
