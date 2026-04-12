@@ -207,8 +207,8 @@ def status():
         click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
         click.echo("\nNext Step: Use the `pm_query` tool with a 'query' to explore.")
     else:
-        click.echo("Available Commands: build, refresh, find, context, impact, status")
-        click.echo("\nNext Step: Run `project-map find --query <symbol>` to explore.")
+        click.echo("Available Commands: build, refresh, find, context, impact, status, help")
+        click.echo("\nNext Step: Run `project-map find -q <symbol>` to explore.")
 
 if __name__ == '__main__':
     cli()
