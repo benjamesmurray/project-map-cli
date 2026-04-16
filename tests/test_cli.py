@@ -34,3 +34,31 @@ def test_status_command():
     assert result.exit_code == 0
     assert "Workspace: project-map-cli" in result.output
     assert "Available Commands: build, refresh, find, context, impact, status" in result.output
+
+def test_mcp_mode_advice(monkeypatch):
+    monkeypatch.setenv("MCP_MODE", "1")
+    runner = CliRunner()
+    
+    # Test find advice
+    result = runner.invoke(cli, ["find", "--query", "UserService"])
+    assert "Next Step: Run `map pm_plan --fqn com.example.UserService` to analyze its impact." in result.output
+    
+    # Test impact advice
+    result = runner.invoke(cli, ["impact", "--fqn", "com.example.UserRepository"])
+    assert "Next Step: Run `map pm_status` for a workspace overview." in result.output
+    
+    # Test status advice
+    result = runner.invoke(cli, ["status"])
+    assert "Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help" in result.output
+    assert "Next Step: Run `map pm_query --query <query>` to explore." in result.output
+
+def test_mcp_help_command(monkeypatch):
+    monkeypatch.setenv("MCP_MODE", "1")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["help"])
+    assert result.exit_code == 0
+    assert "Project Map CLI - Agent Mode" in result.output
+    assert "Use the `map` shim for efficient tool calls:" in result.output
+    assert "map pm_query --query \"MySymbol\"" in result.output
+
+

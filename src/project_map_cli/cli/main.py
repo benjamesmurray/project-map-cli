@@ -15,6 +15,15 @@ def cli():
 @click.pass_context
 def help(ctx, topic):
     """Show help for a command."""
+    if is_mcp_mode() and not topic:
+        click.echo("Project Map CLI - Agent Mode")
+        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
+        click.echo("\nUse the `map` shim for efficient tool calls:")
+        click.echo("  map <tool_name> [arguments]")
+        click.echo("\nExample: map pm_query --query \"MySymbol\"")
+        click.echo("\nNext Step: Run `map pm_status` to see workspace health.")
+        return
+
     if not topic:
         click.echo(ctx.parent.get_help())
         return
@@ -55,7 +64,7 @@ def find(query: str):
         first_qname = matches[0].get('qname') or matches[0].get('name')
         if first_qname:
             if is_mcp_mode():
-                click.echo(f"\nNext Step: Use the `pm_plan` tool with fqn: '{first_qname}' to analyze its impact.")
+                click.echo(f"\nNext Step: Run `map pm_plan --fqn {first_qname}` to analyze its impact.")
             else:
                 click.echo(f"\nNext Step: Run `project-map impact -f {first_qname}` to analyze its impact.")
 
@@ -150,7 +159,7 @@ def impact(fqn: str):
         click.echo("Warning: Fanout cap reached. Impact may be larger.")
     
     if is_mcp_mode():
-        click.echo(f"\nNext Step: Use the `pm_status` tool for a workspace overview.")
+        click.echo(f"\nNext Step: Run `map pm_status` for a workspace overview.")
     else:
         click.echo(f"\nNext Step: Run `project-map status` for workspace overview.")
 
@@ -205,7 +214,7 @@ def status():
 
     if is_mcp_mode():
         click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
-        click.echo("\nNext Step: Use the `pm_query` tool with a 'query' to explore.")
+        click.echo("\nNext Step: Run `map pm_query --query <query>` to explore.")
     else:
         click.echo("Available Commands: build, refresh, find, context, impact, status, help")
         click.echo("\nNext Step: Run `project-map find -q <symbol>` to explore.")

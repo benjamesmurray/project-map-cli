@@ -150,7 +150,7 @@ async def handle_call_tool(
             help_text = f"Help for pm_{topic}:\n{doc['desc']}\n  Usage: {doc['usage']}"
         else:
             help_text = "Project Map CLI - MCP Tools Help\n\n"
-            help_text += "You have access to the following 'pm_' native tools. Use these tools by providing the specific JSON parameters, rather than passing raw CLI commands.\n\n"
+            help_text += "You have access to the following 'pm_' native tools. Use the `map` shim for the most efficient command path (e.g., `map pm_query --query ...`).\n\n"
             for t_name, t_info in tools_docs.items():
                 help_text += f"* {t_name}\n  {t_info['desc']}\n  Usage: {t_info['usage']}\n\n"
         
