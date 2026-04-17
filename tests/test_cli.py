@@ -41,16 +41,16 @@ def test_mcp_mode_advice(monkeypatch):
     
     # Test find advice
     result = runner.invoke(cli, ["find", "--query", "UserService"])
-    assert "Next Step: Run `map pm_plan --fqn com.example.UserService` to analyze its impact." in result.output
+    assert "Next Step: `map pm_plan --fqn com.example.UserService`" in result.output
     
     # Test impact advice
     result = runner.invoke(cli, ["impact", "--fqn", "com.example.UserRepository"])
-    assert "Next Step: Run `map pm_status` for a workspace overview." in result.output
+    assert "Next Step: `map pm_status`" in result.output
     
     # Test status advice
     result = runner.invoke(cli, ["status"])
     assert "Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help" in result.output
-    assert "Next Step: Run `map pm_query --query <query>` to explore." in result.output
+    assert "Next Step: `map pm_query --query <query>`" in result.output
 
 def test_mcp_help_command(monkeypatch):
     monkeypatch.setenv("MCP_MODE", "1")

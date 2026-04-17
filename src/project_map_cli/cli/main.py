@@ -64,7 +64,7 @@ def find(query: str):
         first_qname = matches[0].get('qname') or matches[0].get('name')
         if first_qname:
             if is_mcp_mode():
-                click.echo(f"\nNext Step: Run `map pm_plan --fqn {first_qname}` to analyze its impact.")
+                click.echo(f"\nNext Step: `map pm_plan --fqn {first_qname}`")
             else:
                 click.echo(f"\nNext Step: Run `project-map impact -f {first_qname}` to analyze its impact.")
 
@@ -159,7 +159,7 @@ def impact(fqn: str):
         click.echo("Warning: Fanout cap reached. Impact may be larger.")
     
     if is_mcp_mode():
-        click.echo(f"\nNext Step: Run `map pm_status` for a workspace overview.")
+        click.echo(f"\nNext Step: `map pm_status`")
     else:
         click.echo(f"\nNext Step: Run `project-map status` for workspace overview.")
 
@@ -214,7 +214,7 @@ def status():
 
     if is_mcp_mode():
         click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
-        click.echo("\nNext Step: Run `map pm_query --query <query>` to explore.")
+        click.echo("\nNext Step: `map pm_query --query <query>`")
     else:
         click.echo("Available Commands: build, refresh, find, context, impact, status, help")
         click.echo("\nNext Step: Run `project-map find -q <symbol>` to explore.")

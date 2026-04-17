@@ -123,7 +123,7 @@ Matches Found: 3
 - [pid: 4] src/main/kotlin/com/example/InternalUserService.kt (com.example.InternalUserService)
 - [pid: 9] src/main/kotlin/com/example/UserModule.kt (com.example.UserModule)
 
-Next Step: Run `map pm_plan --fqn com.example.UserService` to analyze its impact.
+Next Step: `map pm_plan --fqn com.example.UserService`
 ```
 
 ### MCP Server Registration
