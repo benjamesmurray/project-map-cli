@@ -16,7 +16,7 @@ Follow these steps to add `project-map-cli` to your local environment.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/project-map-cli.git
+   git clone https://github.com/benjamesmurray/project-map-cli.git
    cd project-map-cli
    ```
 
@@ -34,6 +34,14 @@ Follow these steps to add `project-map-cli` to your local environment.
 ### Requirements
 - Python 3.10 or higher
 - tree-sitter-language-pack (included in dependencies)
+
+### The `map` Alias (Recommended)
+For the best agent experience, it is recommended to set up a `map` alias or shim that points to the MCP invocation. This reduces token usage and aligns with the examples shown in the tool's "Next Step" advice.
+
+```bash
+# Example alias for your shell
+alias map='mcpx project-map-cli'
+```
 
 ## MCP Server Documentation
 
