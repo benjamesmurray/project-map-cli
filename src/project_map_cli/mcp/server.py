@@ -93,6 +93,56 @@ async def handle_list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {}
             }
+        ),
+        Tool(
+            name="pm_fetch_symbol",
+            description="Extracts the raw source code of a specific symbol (class/function/variable) from a file using AST parsing.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file."
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "The name of the symbol to extract."
+                    }
+                },
+                "required": ["path", "symbol"]
+            }
+        ),
+        Tool(
+            name="pm_check_blast_radius",
+            description="Identifies all components and files that depend on or import a specific symbol. Useful for assessing the impact of a change.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file containing the symbol."
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "The name of the symbol to analyze."
+                    }
+                },
+                "required": ["path", "symbol"]
+            }
+        ),
+        Tool(
+            name="pm_semantic_search",
+            description="Searches for code logic using natural language keywords across the indexed codebase.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The natural language search query (e.g., 'where are passwords hashed?')."
+                    }
+                },
+                "required": ["query"]
+            }
         )
     ]
 
@@ -116,28 +166,40 @@ async def handle_call_tool(
         # Tools documentation
         tools_docs = {
             "pm_status": {
-                "desc": "Checks the current workspace context and indexing status.",
+                "desc": "Check workspace health and see which analyzers are active.",
                 "usage": "Call with no arguments."
             },
             "pm_init": {
-                "desc": "Initializes or refreshes the project map index. Use this after significant code changes.",
+                "desc": "Refresh the map index after significant code changes to maintain discovery accuracy.",
                 "usage": 'Call with {"profile": "full"} or {"profile": "light"}.'
             },
             "pm_query": {
-                "desc": "Search for a symbol across the codebase or get architectural context for a specific file.",
+                "desc": "Use for semantic search of symbols or to get a dense architectural summary of a specific file path.",
                 "usage": 'Usage (symbol search): Call with {"query": "MyClassName"}\n  Usage (file context): Call with {"path": "src/main.py"}'
             },
             "pm_plan": {
-                "desc": "Analyze the architectural impact and dependencies of a fully qualified symbol.",
+                "desc": "Run this with the Fully Qualified Name (FQN) of a symbol before starting a refactor to identify downstream dependencies and impact.",
                 "usage": 'Usage: Call with {"fqn": "com.example.MyClassName"}'
             },
             "pm_verify": {
-                "desc": "Checks if the project map index exists and the system is healthy.",
+                "desc": "Checks the health of the project map system and recent indexing status.",
                 "usage": "Call with no arguments."
             },
             "pm_help": {
                 "desc": "Returns detailed help text for a specific command or topic.",
                 "usage": 'Call with no arguments or {"topic": "pm_query"}.'
+            },
+            "pm_fetch_symbol": {
+                "desc": "Extracts the raw source code of a specific symbol (class/function/variable) from a file using AST parsing.",
+                "usage": 'Usage: Call with {"path": "src/main.py", "symbol": "MyClass"}'
+            },
+            "pm_check_blast_radius": {
+                "desc": "Identifies all components and files that depend on or import a specific symbol. Useful for assessing the impact of a change.",
+                "usage": 'Usage: Call with {"path": "src/main.py", "symbol": "my_function"}'
+            },
+            "pm_semantic_search": {
+                "desc": "Searches for code logic using natural language keywords across the indexed codebase.",
+                "usage": 'Usage: Call with {"query": "how is X processed?"}'
             }
         }
         
@@ -151,6 +213,7 @@ async def handle_call_tool(
         else:
             help_text = "Project Map CLI - MCP Tools Help\n\n"
             help_text += "You have access to the following 'pm_' native tools. Use the `map` shim for the most efficient command path (e.g., `map pm_query --query ...`).\n\n"
+            help_text += "Pro-Tip: Use `pm_query` when you know the symbol name or file path; use `pm_semantic_search` when you're looking for a concept or logic (e.g., 'where are users saved?').\n\n"
             for t_name, t_info in tools_docs.items():
                 help_text += f"* {t_name}\n  {t_info['desc']}\n  Usage: {t_info['usage']}\n\n"
         
@@ -194,6 +257,23 @@ async def handle_call_tool(
         if "Discovery (No index found)" in result.output:
             return [TextContent(type="text", text="Status: Index missing. Run pm_init to generate the project map.")]
         return [TextContent(type="text", text="Status: System healthy. Index is present and accessible.")]
+
+    elif name == "pm_fetch_symbol":
+        path = arguments.get("path")
+        symbol = arguments.get("symbol")
+        result = runner.invoke(main_cli, ["fetch", "--path", path, "--symbol", symbol])
+        return [TextContent(type="text", text=result.output)]
+
+    elif name == "pm_check_blast_radius":
+        path = arguments.get("path")
+        symbol = arguments.get("symbol")
+        result = runner.invoke(main_cli, ["blast", "--path", path, "--symbol", symbol])
+        return [TextContent(type="text", text=result.output)]
+
+    elif name == "pm_semantic_search":
+        query = arguments.get("query")
+        result = runner.invoke(main_cli, ["search", query])
+        return [TextContent(type="text", text=result.output)]
 
     else:
         raise ValueError(f"Unknown tool: {name}")

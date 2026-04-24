@@ -1,6 +1,7 @@
 import os
 import click
 from project_map_cli.core.query_engine import QueryEngine
+from project_map_cli.core.hydration import HydrationTools
 
 def is_mcp_mode() -> bool:
     return os.environ.get("MCP_MODE") == "1"
@@ -17,9 +18,17 @@ def help(ctx, topic):
     """Show help for a command."""
     if is_mcp_mode() and not topic:
         click.echo("Project Map CLI - Agent Mode")
-        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
         click.echo("\nUse the `map` shim for efficient tool calls:")
-        click.echo("  map <tool_name> [arguments]")
+        click.echo("- `map pm_query`: Find specific symbols by name or get a dense AST outline of a file.")
+        click.echo("- `map pm_semantic_search`: Find where logic lives using natural language (e.g., 'auth', 'database').")
+        click.echo("- `map pm_fetch_symbol`: Pull raw source code for a specific AST node (token-efficient hydration).")
+        click.echo("- `map pm_check_blast_radius`: Analyze downstream impacts (callers and imports) for a symbol.")
+        click.echo("- `map pm_plan`: Analyze architectural impact of an FQN before a refactor.")
+        click.echo("- `map pm_init`: Refresh the map index after significant code changes.")
+        click.echo("- `map pm_status`: Check workspace health and active analyzers.")
+        
+        click.echo("\nPro-Tip: Use `pm_query` when you know the symbol name; use `pm_semantic_search` when you're looking for a concept or logic.")
+        
         click.echo("\nExample: map pm_query --query \"MySymbol\"")
         click.echo("\nNext Step: Run `map pm_status` to see workspace health.")
         return
@@ -193,6 +202,57 @@ def refresh(ctx: click.Context):
     ctx.invoke(build)
 
 @cli.command()
+@click.option('--path', '-p', required=True, help="File path")
+@click.option('--symbol', '-s', required=True, help="Symbol name")
+def fetch(path: str, symbol: str):
+    """Extract raw code for a specific symbol using AST parsing."""
+    engine = QueryEngine()
+    tools = HydrationTools(engine)
+    result = tools.fetch_symbol(path, symbol)
+    click.echo(result)
+
+@cli.command()
+@click.option('--path', '-p', required=True, help="File path")
+@click.option('--symbol', '-s', required=True, help="Symbol name")
+def blast(path: str, symbol: str):
+    """Check the blast radius (dependencies) of a symbol."""
+    engine = QueryEngine()
+    tools = HydrationTools(engine)
+    results = tools.check_blast_radius(path, symbol)
+    
+    click.echo(f"Resource: Blast Radius | Symbol: {symbol} in {path}")
+    if not results:
+        click.echo("No dependent components found.")
+        return
+        
+    if results and "error" in results[0]:
+        click.echo(f"Error: {results[0]['error']}")
+        return
+
+    click.echo(f"Impacted Components: {len(results)}")
+    for r in results[:15]:
+        click.echo(f"- {r['path']} (ln: {r['ln']}) -> {r['name']} (via {r['via']})")
+    
+    if len(results) > 15:
+        click.echo(f"... and {len(results) - 15} more.")
+
+@cli.command()
+@click.argument('query')
+def search(query: str):
+    """Semantic keyword search over the codebase index."""
+    engine = QueryEngine()
+    tools = HydrationTools(engine)
+    results = tools.semantic_search(query)
+    
+    click.echo(f"Resource: Semantic Search | Query: {query}")
+    click.echo(f"Matches Found: {len(results)}")
+    for r in results:
+        matches_str = ", ".join(r['matches'][:3])
+        if len(r['matches']) > 3:
+            matches_str += "..."
+        click.echo(f"- {r['path']} (score: {r['score']}) [{matches_str}]")
+
+@cli.command()
 def status():
     """Returns current workspace context and available commands."""
     engine = QueryEngine()
@@ -213,10 +273,10 @@ def status():
         click.echo("Phase: Discovery (No index found)")
 
     if is_mcp_mode():
-        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help")
+        click.echo("Available Tools: pm_init, pm_query, pm_plan, pm_status, pm_verify, pm_help, pm_fetch_symbol, pm_check_blast_radius, pm_semantic_search")
         click.echo("\nNext Step: `map pm_query --query <query>`")
     else:
-        click.echo("Available Commands: build, refresh, find, context, impact, status, help")
+        click.echo("Available Commands: build, refresh, find, context, impact, status, help, fetch, blast, search")
         click.echo("\nNext Step: Run `project-map find -q <symbol>` to explore.")
 
 if __name__ == '__main__':

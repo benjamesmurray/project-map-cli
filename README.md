@@ -48,26 +48,34 @@ alias map='mcpx project-map-cli'
 The `project-map-cli` MCP server exposes several semantic tools designed for agent use. These tools use the **`pm_`** prefix to avoid conflicts with other "Spec CLI" style servers.
 
 ### `pm_init`
-Initializes or refreshes the repository digest (the "Project Map").
+Refresh the map index after significant code changes to maintain discovery accuracy.
 
 *   **Arguments:**
     *   `profile`: `full` (default) or `light` (faster, skips some detail).
 
 ### `pm_status`
-Returns the current workspace context and indexing health.
+Check workspace health and see which analyzers are active.
 
 ### `pm_query`
-Finds a symbol or gets dense file context.
+Use for semantic search of symbols or to get a dense architectural summary of a specific file path.
 
 *   **Arguments (provide one):**
     *   `query`: The symbol name or part of the Fully Qualified Name (FQN) to search for.
     *   `path`: The relative path to a file to inspect for AST outline and dependencies.
 
-### `pm_plan`
-Analyzes the architectural impact of modifying a specific symbol.
+### `pm_plan` / `pm_check_blast_radius`
+Run this with the Fully Qualified Name (FQN) of a symbol before starting a refactor to identify downstream dependencies and impact.
 
 *   **Arguments:**
     *   `fqn`: The exact Fully Qualified Name of the target symbol.
+    *   `path`: (For `pm_check_blast_radius`) Relative path to the file containing the symbol.
+    *   `symbol`: (For `pm_check_blast_radius`) The name of the symbol to analyze.
+
+### `pm_fetch_symbol` (Granular Hydration)
+Extracts the raw source code of a specific symbol (class/function/variable) from a file using AST parsing. This allows the agent to pull exactly what it needs without blowing up the context window.
+
+### `pm_semantic_search`
+Searches for code logic using natural language keywords across the indexed codebase (e.g., "where are passwords hashed?").
 
 ### `pm_help` / `pm_verify`
 Provides usage guidance and system health verification.
@@ -99,13 +107,36 @@ Reports the last generation timestamp and indexing status.
 *   **Syntax:** `project-map find -q <search_string>`
 *   **Example:** `project-map find -q MyClassName`
 
-### `project-map context`
+### `project_map context`
 *   **Syntax:** `project-map context -p <file_path>`
 *   **Example:** `project-map context -p src/main.py`
 
-### `project-map impact`
+### `project_map impact` / `project_map blast`
 *   **Syntax:** `project-map impact -f <fully_qualified_name>`
-*   **Example:** `project-map impact -f com.example.MyClass`
+*   **Syntax:** `project-map blast -p <path> -s <symbol>`
+
+### `project_map fetch`
+*   **Syntax:** `project-map fetch -p <path> -s <symbol>`
+*   **Example:** `project-map fetch -p src/core.py -s MyClass`
+
+### `project_map search`
+*   **Syntax:** `project-map search "<query>"`
+*   **Example:** `project-map search "where are symbols searched"`
+
+## Testing
+
+`project-map-cli` includes a robust, language-agnostic **End-to-End (E2E) Test Suite** designed to ensure functional consistency during refactors.
+
+### Running E2E Tests
+The E2E suite uses static fixture repositories and performs structural JSON validation on the generated shards.
+
+```bash
+# Run against the default Python implementation
+pytest tests/e2e
+
+# Run against a different implementation (e.g., Rust)
+PROJECT_MAP_BIN="target/release/project-map" pytest tests/e2e
+```
 
 ## Input/Output Specifications
 

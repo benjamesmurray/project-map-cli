@@ -1,0 +1,4 @@
+[libraries]
+kafka-streams = { module = "org.apache.kafka:kafka-streams", version = "3.6.0" }
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "1.9.0" }

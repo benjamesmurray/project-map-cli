@@ -70,7 +70,7 @@ def list_imports(path: Path) -> List[Dict[str, Any]]:
             for alias in node.names:
                 out.append({
                     "k": "imp",
-                    "mod": alias.name.split(".", 1)[0],  # top-level hint
+                    "mod": alias.name,
                     "n": alias.asname or alias.name,
                     "ln": node.lineno,
                 })

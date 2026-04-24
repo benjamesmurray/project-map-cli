@@ -165,13 +165,19 @@ def run(cfg: Config) -> None:
         tops: List[str] = []
         for p in py_files:
             mod = ast_utils.module_name_from_path(p, cfg.root)
-            top = mod.split(".", 1)[0] if mod else ""
-            if not top:
+            if not mod:
                 continue
+            parts = mod.split(".")
+            top = parts[0]
             if top in {"tests", "test", "testing", "__root__"}:
                 continue
             if top not in tops:
                 tops.append(top)
+            # If top level is 'src' or 'lib', also allow the next level as a top level
+            if top in {"src", "lib"} and len(parts) > 1:
+                sub = parts[1]
+                if sub not in tops:
+                    tops.append(sub)
         if tops:
             pattern = r"^(" + "|".join(sorted(tops)) + r")(\.|$)"
         else:

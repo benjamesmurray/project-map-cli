@@ -22,7 +22,7 @@ def _dst_module(import_rec: Dict[str, Any], src_mod: str) -> str:
     kind = import_rec.get("k")
     mod = import_rec.get("mod", "") or ""
     if kind == "imp":
-        # E.g. `import pkg.sub as sub` → mod='pkg'
+        # E.g. `import pkg.sub as sub` → mod='pkg.sub'
         return mod
     elif kind == "from":
         if mod:
